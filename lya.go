@@ -1,7 +1,10 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -12,13 +15,110 @@ var lstObjStateLya []ObjStateLya
 
 var tmp_geo []string
 
+var root = flag.String("root", ".", "file system path")
+
 func main() {
 	fmt.Println("Welcome to lya")
 	//currentPath = "C:\\Users\\plane\\OneDrive\\Documents\\development\\data\\addy\\MAY21_GNAF_PipeSeparatedValue\\"
 	currentPath = "/mnt/c/Users/plane/OneDrive/Documents/development/data/addy/MAY21_GNAF_PipeSeparatedValue/"
 	loadStates()
 	loadPostcodes()
+	loadStreets()
 	//loadSuburbs()
+
+	/*findFrankston := findSuburb("FRANKSTON")
+	fmt.Println(findFrankston)
+
+	fmt.Println(lstObjStateLya[0].LstObjPostcodeLya[0].LstObjSuburbLya[0])
+	fmt.Println(lstObjStateLya[0].LstObjPostcodeLya[0].LstObjSuburbLya[1])
+	//lat1 string, long1 string, lat2 string, long2 string
+	getDistance(
+		lstObjStateLya[0].LstObjPostcodeLya[0].LstObjSuburbLya[0].LATITUDE,
+		lstObjStateLya[0].LstObjPostcodeLya[0].LstObjSuburbLya[0].LONGITUDE,
+		lstObjStateLya[0].LstObjPostcodeLya[0].LstObjSuburbLya[1].LATITUDE,
+		lstObjStateLya[0].LstObjPostcodeLya[0].LstObjSuburbLya[1].LONGITUDE,
+	)*/
+
+	/*getsubs := getSuburbDistance(
+	lstObjStateLya[0].LstObjPostcodeLya[0].LstObjSuburbLya[0].LATITUDE,
+	lstObjStateLya[0].LstObjPostcodeLya[0].LstObjSuburbLya[0].LONGITUDE)*/
+
+	//get suburbs
+	/*getsubs := getSuburbDistance(
+		findFrankston[1].LATITUDE,
+		findFrankston[1].LONGITUDE)
+	sorted := sortClosestSuburb(getsubs)
+	fmt.Println("Print top 14 closes to frankston south")
+	for i := 0; i < 50; i++ {
+		fmt.Println(sorted[i])
+	}*/
+
+	fmt.Println("Lotyouraddress running")
+	http.HandleFunc("/", handlerFunc)
+	http.Handle("/web/", http.FileServer(http.Dir(*root)))
+	http.ListenAndServe(":3000", nil)
+}
+
+func findSuburb(name string) []ObjSuburbLya {
+	var lstSuburbs []ObjSuburbLya
+	for states, _ := range lstObjStateLya {
+		for postcodes, _ := range lstObjStateLya[states].LstObjPostcodeLya {
+			for suburbs, _ := range lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya {
+				tmp_name := lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].Suburb
+				if strings.Contains(tmp_name, name) {
+					lstSuburbs = append(lstSuburbs, lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs])
+				}
+			}
+		}
+	}
+	return lstSuburbs
+}
+
+func findPIDSuburb(name string) []ObjSuburbLya {
+	var lstSuburbs []ObjSuburbLya
+	for states, _ := range lstObjStateLya {
+		for postcodes, _ := range lstObjStateLya[states].LstObjPostcodeLya {
+			for suburbs, _ := range lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya {
+				/*tmp_name := lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].Suburb
+				if strings.Contains(tmp_name, name) {
+					lstSuburbs = append(lstSuburbs, lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs])
+				}*/
+				if name == lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LOCALITY_PID {
+					//lstSuburbs = lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs]
+
+					lstSuburbs = append(lstSuburbs, lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs])
+					return lstSuburbs
+				}
+			}
+		}
+	}
+	return lstSuburbs
+}
+
+func getSuburbDistance(lat1 string, long1 string) []ObjDistance {
+	lat_2, _ := strconv.ParseFloat(lat1, 32)
+	long_2, _ := strconv.ParseFloat(long1, 32)
+	var lstContents []ObjDistance
+	for states, _ := range lstObjStateLya {
+		for postcodes, _ := range lstObjStateLya[states].LstObjPostcodeLya {
+			for suburbs, _ := range lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya {
+				tmp_lat, _ := strconv.ParseFloat(lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LATITUDE, 32)
+				tmp_long, _ := strconv.ParseFloat(lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LONGITUDE, 32)
+				km := distance(lat_2, long_2, tmp_lat, tmp_long, "K")
+				tmp_ObjDistance := ObjDistance{
+					Km:           km,
+					Suburb:       lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].Suburb,
+					LOCALITY_PID: lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LOCALITY_PID,
+					sorted:       false,
+					Postcode:     lstObjStateLya[states].LstObjPostcodeLya[postcodes].Postcode,
+					State:        lstObjStateLya[states].State_Abbr,
+				}
+				lstContents = append(lstContents, tmp_ObjDistance)
+			}
+		}
+	}
+	//fmt.Println(len(lstContents))
+	return lstContents
 }
 
 //examples
@@ -112,7 +212,6 @@ func loadPostcodes() {
 			lstObjStateLya[index].LstObjPostcodeLya = append(lstObjStateLya[index].LstObjPostcodeLya, tmp_ObjPostcodeLya)
 		}
 	}
-	fmt.Println(lstObjStateLya[0].LstObjPostcodeLya[0])
 }
 
 func loadSuburbs(state string) []ObjSuburbLya {
@@ -138,3 +237,45 @@ func loadSuburbs(state string) []ObjSuburbLya {
 	fmt.Println("load suburbs done")
 	return lst_tmp_ObjSuburbLya
 }
+
+//street
+//STREET_LOCALITY_PID|DATE_CREATED|DATE_RETIRED|STREET_CLASS_CODE|STREET_NAME|STREET_TYPE_CODE|STREET_SUFFIX_CODE|LOCALITY_PID|GNAF_STREET_PID|GNAF_STREET_CONFIDENCE|GNAF_RELIABILITY_CODE
+//TAS3349313|2018-05-05||C|EMMETT|STREET||TAS487|502237149|2|4
+
+func loadStreets() {
+
+	for index, _ := range lstObjStateLya {
+		fmt.Println("loading streets in : " + lstObjStateLya[index].State_Name)
+		tmp_streets := readLocal(currentPath + "G-NAF/G-NAF MAY 2021/Standard/" + lstObjStateLya[index].State_Abbr + "_STREET_LOCALITY_psv.psv")
+		for i := 1; i < len(tmp_streets); i++ {
+			if strings.Contains(tmp_streets[i], "|") {
+				tmp_line := strings.Split(tmp_streets[i], "|")
+				tmp_ObjStreetsLya := ObjStreetsLya{
+					STREET_LOCALITY_PID: tmp_line[0],
+					STREET_NAME:         tmp_line[4],
+					STREET_TYPE_CODE:    tmp_line[5],
+				}
+				found := false
+				for pc, _ := range lstObjStateLya[index].LstObjPostcodeLya {
+					for sub, _ := range lstObjStateLya[index].LstObjPostcodeLya[pc].LstObjSuburbLya {
+						if lstObjStateLya[index].LstObjPostcodeLya[pc].LstObjSuburbLya[sub].LOCALITY_PID == tmp_line[7] {
+							lstObjStateLya[index].LstObjPostcodeLya[pc].LstObjSuburbLya[sub].LstObjStreetsLya = append(lstObjStateLya[index].LstObjPostcodeLya[pc].LstObjSuburbLya[sub].LstObjStreetsLya, tmp_ObjStreetsLya)
+							found = true
+							break
+						}
+					}
+					if found {
+						break
+					}
+				}
+			}
+		}
+	}
+	//fmt.Println(lstObjStateLya[0].LstObjPostcodeLya[0].LstObjSuburbLya[0])
+}
+
+/*STREET_NAME         string
+STREET_TYPE_CODE    string
+LONGITUDE           string
+LATITUDE            string
+STREET_LOCALITY_PID string*/
