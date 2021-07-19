@@ -13,6 +13,7 @@ import (
 )
 
 func handlerFunc(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
 	//var page_loaded = false
 	//keys, ok := r.URL.Query()["key"]
 	kstate, okst := r.URL.Query()["state"]
@@ -108,6 +109,10 @@ func handlerFunc(w http.ResponseWriter, r *http.Request) {
 	if !found {
 		fmt.Fprint(w, "Welcome to lotyouraddress api")
 	}
+}
+
+func enableCors(w *http.ResponseWriter) {
+	(*w).Header().Set("Access-Control-Allow-Origin", "*")
 }
 
 func writeImage(w http.ResponseWriter, img *image.Image) {
