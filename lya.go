@@ -20,7 +20,10 @@ var root = flag.String("root", ".", "file system path")
 func main() {
 	fmt.Println("Welcome to lya")
 	//currentPath = "C:\\Users\\plane\\OneDrive\\Documents\\development\\data\\addy\\MAY21_GNAF_PipeSeparatedValue\\"
-	currentPath = "/mnt/c/Users/plane/OneDrive/Documents/development/data/addy/MAY21_GNAF_PipeSeparatedValue/"
+	//currentPath = "/mnt/c/Users/plane/OneDrive/Documents/development/data/addy/MAY21_GNAF_PipeSeparatedValue/"
+	cp := readLocal(".currentPath")
+	currentPath = cp[0]
+	//fmt.Println(cp[0])
 	loadStates()
 	loadPostcodes()
 	loadStreets()
