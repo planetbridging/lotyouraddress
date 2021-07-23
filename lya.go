@@ -3,17 +3,22 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
 )
 
 var currentPath string
+var currentInternetPath string
 var lstStaticStates []string
 
 var lstObjStateLya []ObjStateLya
 
 var tmp_geo []string
+
+var internet_geo []ObjInternetType
 
 var root = flag.String("root", ".", "file system path")
 
@@ -27,6 +32,8 @@ func main() {
 	loadStates()
 	loadPostcodes()
 	loadStreets()
+	loadInternet()
+	loadInternetSpeeds()
 	//loadSuburbs()
 
 	/*findFrankston := findSuburb("FRANKSTON")
@@ -282,3 +289,78 @@ STREET_TYPE_CODE    string
 LONGITUDE           string
 LATITUDE            string
 STREET_LOCALITY_PID string*/
+
+func loadInternet() {
+	//C:\Users\plane\OneDrive\Documents\development\data\internetnrenting\kmlconvert
+	//lawson frankston example
+	//tmp_lat := "-38.17599781"
+	//tmp_lon := "145.12900074"
+
+	//lamington mango hill example
+	tmp_lat := "-27.24106463"
+	tmp_lon := "153.04441987"
+
+	cp := readLocal(".currentInternetPath")
+	currentInternetPath = cp[0]
+
+	//current location :D files, err := ioutil.ReadDir("./")
+	files, err := ioutil.ReadDir(currentInternetPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, f := range files {
+		internet_type := strings.Replace(f.Name(), ".csv", "", -1)
+		fmt.Println("reading: " + internet_type)
+
+		tmp_data := readLocal(currentInternetPath + f.Name())
+		for i := 1; i < len(tmp_data); i++ {
+			//fmt.Println(tmp_data[i])
+			cleaned := strings.ReplaceAll(tmp_data[i], " ", "")
+			row := strings.Split(cleaned, ",")
+			tmp_ObjInternetType := ObjInternetType{
+				LONGITUDE:    row[0],
+				LATITUDE:     row[1],
+				InternetType: internet_type,
+			}
+			internet_geo = append(internet_geo, tmp_ObjInternetType)
+			//tmp_rows = append(tmp_rows, [row[0],row[1]])
+			//break
+		}
+	}
+
+	selected_internet := getInternetType(tmp_lon, tmp_lat)
+	fmt.Println(selected_internet.InternetType)
+}
+
+func getInternetType(lon string, lat string) ObjInternetType {
+	smallest := 9999999999999999.99999
+	var selected ObjInternetType
+	for index, _ := range internet_geo {
+		//lat1 string, long1 string, lat2 string, long2 string
+		tmp_dis := getDistance(lat, lon, internet_geo[index].LATITUDE, internet_geo[index].LONGITUDE)
+		if tmp_dis <= smallest {
+			smallest = tmp_dis
+			selected = internet_geo[index]
+		}
+	}
+	return selected
+}
+
+func loadInternetSpeeds() {
+	fmt.Println("loading internet speeds to streets")
+	for states, _ := range lstObjStateLya {
+		for postcodes, _ := range lstObjStateLya[states].LstObjPostcodeLya {
+			for suburbs, _ := range lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya {
+				for streets, _ := range lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya {
+					tmp_lat := lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya[streets].LATITUDE
+					tmp_lon := lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya[streets].LONGITUDE
+					selected_internet := getInternetType(tmp_lon, tmp_lat)
+					lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya[streets].InternetType = selected_internet.InternetType
+				}
+			}
+		}
+		fmt.Println("states done: " + lstObjStateLya[states].State_Abbr)
+	}
+
+}

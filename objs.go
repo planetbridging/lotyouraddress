@@ -5,6 +5,12 @@ import (
 	"fmt"
 )
 
+type ObjInternetType struct {
+	LONGITUDE    string
+	LATITUDE     string
+	InternetType string
+}
+
 type ObjStreetsLya struct {
 	STREET_NAME         string
 	STREET_TYPE_CODE    string
@@ -12,6 +18,7 @@ type ObjStreetsLya struct {
 	LATITUDE            string
 	STREET_LOCALITY_PID string
 	Data                []string
+	InternetType        string
 }
 
 type ObjSuburbLya struct {
