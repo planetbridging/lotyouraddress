@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 )
 
 var currentPath string
@@ -31,9 +33,12 @@ func main() {
 	//fmt.Println(cp[0])
 	loadStates()
 	loadPostcodes()
+	//loadInternet()
 	loadStreets()
-	loadInternet()
-	loadInternetSpeeds()
+	//loadStreetGeo()
+	//loadStreetGeo()
+	//loadInternet()
+	//loadInternetSpeeds()
 	//loadSuburbs()
 
 	/*findFrankston := findSuburb("FRANKSTON")
@@ -251,25 +256,158 @@ func loadSuburbs(state string) []ObjSuburbLya {
 //street
 //STREET_LOCALITY_PID|DATE_CREATED|DATE_RETIRED|STREET_CLASS_CODE|STREET_NAME|STREET_TYPE_CODE|STREET_SUFFIX_CODE|LOCALITY_PID|GNAF_STREET_PID|GNAF_STREET_CONFIDENCE|GNAF_RELIABILITY_CODE
 //TAS3349313|2018-05-05||C|EMMETT|STREET||TAS487|502237149|2|4
+/*func loadStreets() {
+
+	for index, _ := range lstObjStateLya {
+		tmp_saved_path := currentPath + "G-NAF/G-NAF MAY 2021/Standard/geo_internet_" + lstObjStateLya[index].State_Abbr + "_STREET_LOCALITY_psv.psv"
+		check_geo_internet_streets := fileExists(tmp_saved_path)
+		if !check_geo_internet_streets {
+			tmp_streets := readLocal(currentPath + "G-NAF/G-NAF MAY 2021/Standard/" + lstObjStateLya[index].State_Abbr + "_STREET_LOCALITY_psv.psv")
+			tmp_streets_geo := readLocal(currentPath + "G-NAF/G-NAF MAY 2021/Standard/" + lstObjStateLya[index].State_Abbr + "_STREET_LOCALITY_POINT_psv.psv")
+			fmt.Println("Creating tmp lst for state " + lstObjStateLya[index].State_Abbr)
+			var lst_tmp_ObjStreetsLya []ObjStreetsLya
+			for i := 1; i < len(tmp_streets); i++ {
+				if strings.Contains(tmp_streets[i], "|") {
+					tmp_line := strings.Split(tmp_streets[i], "|")
+					STREET_LOCALITY_PID := tmp_line[0]
+					STREET_NAME := tmp_line[4]
+					STREET_TYPE_CODE := tmp_line[5]
+					//INTERNET_TYPE := ""
+					//LONGITUDE := ""
+					//LATITUDE := ""
+					tmp_ObjStreetsLya := ObjStreetsLya{
+						STREET_LOCALITY_PID: STREET_LOCALITY_PID,
+						STREET_NAME:         STREET_NAME,
+						STREET_TYPE_CODE:    STREET_TYPE_CODE,
+						LONGITUDE:           "",
+						LATITUDE:            "",
+						InternetType:        "",
+					}
+					lst_tmp_ObjStreetsLya = append(lst_tmp_ObjStreetsLya, tmp_ObjStreetsLya)
+				}
+			}
+
+			fmt.Println("Appending geo locations to streets")
+			oldTime := time.Now()
+			sliceLength := len(tmp_streets_geo)
+			var wg sync.WaitGroup
+			wg.Add(sliceLength - 1)
+			for i := 1; i < len(tmp_streets_geo); i++ {
+				if strings.Contains(tmp_streets_geo[i], "|") {
+					go func(i int) {
+						defer wg.Done()
+						tmp_line := strings.Split(tmp_streets_geo[i], "|")
+						STREET_LOCALITY_PID := tmp_line[3]
+						LONGITUDE := tmp_line[6]
+						LATITUDE := tmp_line[7]
+						for tmp_lst, _ := range lst_tmp_ObjStreetsLya {
+							if STREET_LOCALITY_PID == lst_tmp_ObjStreetsLya[tmp_lst].STREET_LOCALITY_PID {
+								lst_tmp_ObjStreetsLya[tmp_lst].LATITUDE = LATITUDE
+								lst_tmp_ObjStreetsLya[tmp_lst].LONGITUDE = LONGITUDE
+								break
+							}
+						}
+						//updateGeoOnStreet(index, STREET_LOCALITY_PID, LATITUDE, LONGITUDE)
+					}(i)
+
+				}
+			}
+			wg.Wait()
+
+			fmt.Println("setup internet types on streets")
+
+			var internet_wg sync.WaitGroup
+			internetSliceLength := len(lst_tmp_ObjStreetsLya)
+			internet_wg.Add(internetSliceLength)
+			for i := 0; i < len(lst_tmp_ObjStreetsLya); i++ {
+				go func(i int) {
+					defer internet_wg.Done()
+					//lon string, lat string
+					tmp_internet_type := getInternetType(lst_tmp_ObjStreetsLya[i].LONGITUDE, lst_tmp_ObjStreetsLya[i].LATITUDE)
+					lst_tmp_ObjStreetsLya[i].InternetType = tmp_internet_type.InternetType
+					//updateGeoOnStreet(index, STREET_LOCALITY_PID, LATITUDE, LONGITUDE)
+				}(i)
+
+			}
+			internet_wg.Wait()
+
+			currentTime := time.Now()
+			diff := currentTime.Sub(oldTime)
+			//In hours
+			fmt.Printf("Hours: %f\n", diff.Hours())
+
+			//In minutes
+			fmt.Printf("Minutes: %f\n", diff.Minutes())
+
+			//In seconds
+			fmt.Printf("Seconds: %f\n", diff.Seconds())
+
+			//In nanoseconds
+			fmt.Printf("Nanoseconds: %d\n", diff.Nanoseconds())
+
+			*var tmp_save_street_interet_geo_data []string
+			tmp_save_street_interet_geo_data = append(tmp_save_street_interet_geo_data, "STREET_LOCALITY_PID,STREET_NAME,STREET_TYPE_CODE,INTERNET_TYPE,LONGITUDE,LATITUDE")
+			for i := 1; i < len(tmp_streets); i++ {
+				if strings.Contains(tmp_streets[i], "|") {
+					tmp_line := strings.Split(tmp_streets[i], "|")
+					STREET_LOCALITY_PID := tmp_line[0]
+					STREET_NAME := tmp_line[4]
+					STREET_TYPE_CODE := tmp_line[5]
+					INTERNET_TYPE := ""
+					LONGITUDE := ""
+					LATITUDE := ""
+					for i_geo := 1; i_geo < len(tmp_streets_geo); i_geo++ {
+						tmp_line_geo := strings.Split(tmp_streets_geo[i_geo], "|")
+						if tmp_line_geo[3] == tmp_line[0] {
+							LATITUDE = tmp_line_geo[6]
+							LONGITUDE = tmp_line_geo[7]
+							tmp_streets_geo = remove(tmp_streets_geo, i_geo)
+							break
+						}
+					}
+					INTERNET_TYPE = getInternetType(LONGITUDE, LATITUDE).InternetType
+					tmp_save_street_interet_geo_data = append(tmp_save_street_interet_geo_data, STREET_LOCALITY_PID+"|"+STREET_NAME+"|"+STREET_TYPE_CODE+"|"+INTERNET_TYPE+"|"+LONGITUDE+"|"+LATITUDE)
+				}
+			}
+			saveFile(tmp_save_street_interet_geo_data, tmp_saved_path)*
+		}
+
+		break
+	}
+}*/
 
 func loadStreets() {
 
 	for index, _ := range lstObjStateLya {
+		//oldTime := time.Now()
 		fmt.Println("loading streets in : " + lstObjStateLya[index].State_Name)
-		tmp_streets := readLocal(currentPath + "G-NAF/G-NAF MAY 2021/Standard/" + lstObjStateLya[index].State_Abbr + "_STREET_LOCALITY_psv.psv")
-		for i := 1; i < len(tmp_streets); i++ {
-			if strings.Contains(tmp_streets[i], "|") {
-				tmp_line := strings.Split(tmp_streets[i], "|")
+		tmp_saved_path := currentPath + "G-NAF/G-NAF MAY 2021/Standard/geo_" + lstObjStateLya[index].State_Abbr + "_STREET_LOCALITY_psv.psv"
+		check_geo_streets := fileExists(tmp_saved_path)
+		if !check_geo_streets {
+			generateGeoStreets(index, tmp_saved_path)
+		}
+
+		tmp_streets_geo := readLocal(tmp_saved_path)
+
+		//"STREET_LOCALITY_PID,LONGITUDE,LATITUDE,STREET_NAME,STREET_TYPE_CODE,LOCALITY_PID"
+		for i := 1; i < len(tmp_streets_geo); i++ {
+			if strings.Contains(tmp_streets_geo[i], ",") {
+				tmp_line := strings.Split(tmp_streets_geo[i], ",")
 				tmp_ObjStreetsLya := ObjStreetsLya{
 					STREET_LOCALITY_PID: tmp_line[0],
-					STREET_NAME:         tmp_line[4],
-					STREET_TYPE_CODE:    tmp_line[5],
+					STREET_NAME:         tmp_line[3],
+					STREET_TYPE_CODE:    tmp_line[4],
+					local_pid:           tmp_line[5],
+					InternetType:        "",
+					LONGITUDE:           tmp_line[1],
+					LATITUDE:            tmp_line[2],
 				}
 				found := false
-				for pc, _ := range lstObjStateLya[index].LstObjPostcodeLya {
-					for sub, _ := range lstObjStateLya[index].LstObjPostcodeLya[pc].LstObjSuburbLya {
-						if lstObjStateLya[index].LstObjPostcodeLya[pc].LstObjSuburbLya[sub].LOCALITY_PID == tmp_line[7] {
-							lstObjStateLya[index].LstObjPostcodeLya[pc].LstObjSuburbLya[sub].LstObjStreetsLya = append(lstObjStateLya[index].LstObjPostcodeLya[pc].LstObjSuburbLya[sub].LstObjStreetsLya, tmp_ObjStreetsLya)
+				for p, _ := range lstObjStateLya[index].LstObjPostcodeLya {
+					for s, _ := range lstObjStateLya[index].LstObjPostcodeLya[p].LstObjSuburbLya {
+						//lstObjStateLya[index].LstObjPostcodeLya[p].LstObjSuburbLya
+						if tmp_ObjStreetsLya.local_pid == lstObjStateLya[index].LstObjPostcodeLya[p].LstObjSuburbLya[s].LOCALITY_PID {
+							lstObjStateLya[index].LstObjPostcodeLya[p].LstObjSuburbLya[s].LstObjStreetsLya = append(lstObjStateLya[index].LstObjPostcodeLya[p].LstObjSuburbLya[s].LstObjStreetsLya, tmp_ObjStreetsLya)
 							found = true
 							break
 						}
@@ -279,9 +417,144 @@ func loadStreets() {
 					}
 				}
 			}
+
 		}
+
+		/*currentTime := time.Now()
+		diff := currentTime.Sub(oldTime)
+		//In hours
+		fmt.Printf("Hours: %f\n", diff.Hours())
+
+		//In minutes
+		fmt.Printf("Minutes: %f\n", diff.Minutes())
+
+		//In seconds
+		fmt.Printf("Seconds: %f\n", diff.Seconds())
+
+		//In nanoseconds
+		fmt.Printf("Nanoseconds: %d\n", diff.Nanoseconds())*/
 	}
 	//fmt.Println(lstObjStateLya[0].LstObjPostcodeLya[0].LstObjSuburbLya[0])
+}
+func generateGeoStreets(index int, save string) {
+	tmp_streets := readLocal(currentPath + "G-NAF/G-NAF MAY 2021/Standard/" + lstObjStateLya[index].State_Abbr + "_STREET_LOCALITY_psv.psv")
+	var lst_tmp_streets_noGeo []ObjStreetsLya
+	for i := 1; i < len(tmp_streets); i++ {
+		if strings.Contains(tmp_streets[i], "|") {
+			tmp_line := strings.Split(tmp_streets[i], "|")
+			STREET_LOCALITY_PID := tmp_line[0]
+			STREET_NAME := tmp_line[4]
+			STREET_TYPE_CODE := tmp_line[5]
+			LOCALITY_PID := tmp_line[7]
+
+			tmp_ObjStreetsLya := ObjStreetsLya{
+				STREET_LOCALITY_PID: STREET_LOCALITY_PID,
+				STREET_NAME:         STREET_NAME,
+				STREET_TYPE_CODE:    STREET_TYPE_CODE,
+				local_pid:           LOCALITY_PID,
+				InternetType:        "",
+				LONGITUDE:           "",
+				LATITUDE:            "",
+			}
+			lst_tmp_streets_noGeo = append(lst_tmp_streets_noGeo, tmp_ObjStreetsLya)
+		}
+	}
+
+	fmt.Println("updating geo streets in state: " + lstObjStateLya[index].State_Abbr)
+	tmp_streets_geo := readLocal(currentPath + "G-NAF/G-NAF MAY 2021/Standard/" + lstObjStateLya[index].State_Abbr + "_STREET_LOCALITY_POINT_psv.psv")
+	sliceLength := len(tmp_streets_geo)
+	var wg sync.WaitGroup
+	wg.Add(sliceLength - 1)
+	for i := 1; i < len(tmp_streets_geo); i++ {
+		if strings.Contains(tmp_streets_geo[i], "|") {
+			go func(i int) {
+				defer wg.Done()
+				tmp_line := strings.Split(tmp_streets_geo[i], "|")
+				STREET_LOCALITY_PID := tmp_line[3]
+				LONGITUDE := tmp_line[6]
+				LATITUDE := tmp_line[7]
+
+				for s, _ := range lst_tmp_streets_noGeo {
+					if lst_tmp_streets_noGeo[s].STREET_LOCALITY_PID == STREET_LOCALITY_PID {
+						lst_tmp_streets_noGeo[s].LATITUDE = LATITUDE
+						lst_tmp_streets_noGeo[s].LONGITUDE = LONGITUDE
+						break
+					}
+				}
+				//updateGeoOnStreet(index, STREET_LOCALITY_PID, LATITUDE, LONGITUDE)
+			}(i)
+
+		}
+	}
+	wg.Wait()
+	convertObjStreetToGeoSaving(lst_tmp_streets_noGeo, save)
+}
+
+func convertObjStreetToGeoSaving(lst []ObjStreetsLya, path string) {
+	fmt.Println("saving: " + path)
+	var data []string
+	data = append(data, "STREET_LOCALITY_PID,LONGITUDE,LATITUDE,STREET_NAME,STREET_TYPE_CODE,LOCALITY_PID")
+	for s, _ := range lst {
+		line := lst[s].STREET_LOCALITY_PID + "," + lst[s].LONGITUDE + "," + lst[s].LATITUDE + "," + lst[s].STREET_NAME + "," + lst[s].STREET_TYPE_CODE + "," + lst[s].local_pid
+		data = append(data, line)
+	}
+	saveFile(data, path)
+}
+
+func remove(s []string, i int) []string {
+	s[i] = s[len(s)-1]
+	return s[:len(s)-1]
+}
+
+func loadStreetGeo() {
+	//STREET_LOCALITY_POINT_PID|DATE_CREATED|DATE_RETIRED|STREET_LOCALITY_PID|BOUNDARY_EXTENT|PLANIMETRIC_ACCURACY|LONGITUDE|LATITUDE
+	//L3163461|2018-08-03||VIC1982231|469||145.13349036|-38.1699638
+	for index, _ := range lstObjStateLya {
+		oldTime := time.Now()
+		fmt.Println("updating geo streets in state: " + lstObjStateLya[index].State_Abbr)
+		tmp_streets_geo := readLocal(currentPath + "G-NAF/G-NAF MAY 2021/Standard/" + lstObjStateLya[index].State_Abbr + "_STREET_LOCALITY_POINT_psv.psv")
+		sliceLength := len(tmp_streets_geo)
+		var wg sync.WaitGroup
+		wg.Add(sliceLength - 1)
+		for i := 1; i < len(tmp_streets_geo); i++ {
+			if strings.Contains(tmp_streets_geo[i], "|") {
+				go func(i int) {
+					defer wg.Done()
+					tmp_line := strings.Split(tmp_streets_geo[i], "|")
+					STREET_LOCALITY_PID := tmp_line[3]
+					LONGITUDE := tmp_line[6]
+					LATITUDE := tmp_line[7]
+					updateGeoOnStreet(index, STREET_LOCALITY_PID, LATITUDE, LONGITUDE)
+				}(i)
+
+			}
+		}
+		wg.Wait()
+		currentTime := time.Now()
+		diff := currentTime.Sub(oldTime)
+		//In seconds
+		fmt.Printf("Seconds: %f\n", diff.Seconds())
+
+		//In nanoseconds
+		fmt.Printf("Nanoseconds: %d\n", diff.Nanoseconds())
+	}
+}
+
+func updateGeoOnStreet(index int, street_id string, lat string, lon string) bool {
+	for pc, _ := range lstObjStateLya[index].LstObjPostcodeLya {
+		for sub, _ := range lstObjStateLya[index].LstObjPostcodeLya[pc].LstObjSuburbLya {
+			for stre, _ := range lstObjStateLya[index].LstObjPostcodeLya[pc].LstObjSuburbLya[sub].LstObjStreetsLya {
+				if street_id == lstObjStateLya[index].LstObjPostcodeLya[pc].LstObjSuburbLya[sub].LstObjStreetsLya[stre].STREET_LOCALITY_PID {
+					lstObjStateLya[index].LstObjPostcodeLya[pc].LstObjSuburbLya[sub].LstObjStreetsLya[stre].LATITUDE = lat
+					lstObjStateLya[index].LstObjPostcodeLya[pc].LstObjSuburbLya[sub].LstObjStreetsLya[stre].LONGITUDE = lon
+					return true
+				}
+			}
+
+		}
+
+	}
+	return false
 }
 
 /*STREET_NAME         string
@@ -308,29 +581,53 @@ func loadInternet() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
+	//var tmp_lst_internet_get []string
 	for _, f := range files {
 		internet_type := strings.Replace(f.Name(), ".csv", "", -1)
-		fmt.Println("reading: " + internet_type)
+		if strings.Contains(internet_type, "wireless") || strings.Contains(internet_type, "satellite") {
 
-		tmp_data := readLocal(currentInternetPath + f.Name())
-		for i := 1; i < len(tmp_data); i++ {
-			//fmt.Println(tmp_data[i])
-			cleaned := strings.ReplaceAll(tmp_data[i], " ", "")
-			row := strings.Split(cleaned, ",")
-			tmp_ObjInternetType := ObjInternetType{
-				LONGITUDE:    row[0],
-				LATITUDE:     row[1],
-				InternetType: internet_type,
+		} else {
+			fmt.Println("reading: " + internet_type)
+
+			tmp_data := readLocal(currentInternetPath + f.Name())
+
+			for i := 1; i < len(tmp_data); i++ {
+				//fmt.Println(tmp_data[i])
+				cleaned := strings.ReplaceAll(tmp_data[i], " ", "")
+				row := strings.Split(cleaned, ",")
+				//value := row[0] + "," + row[1] + "," + internet_type
+				//tmp_lst_internet_get = append(tmp_lst_internet_get, value)
+				tmp_ObjInternetType := ObjInternetType{
+					LONGITUDE:    row[0],
+					LATITUDE:     row[1],
+					InternetType: internet_type,
+				}
+
+				internet_geo = append(internet_geo, tmp_ObjInternetType)
 			}
-			internet_geo = append(internet_geo, tmp_ObjInternetType)
-			//tmp_rows = append(tmp_rows, [row[0],row[1]])
-			//break
 		}
+
+	}
+	selected_internet := getInternetType(tmp_lon, tmp_lat)
+	//fmt.Println("Tmp: ", len(tmp_lst_internet_get))
+	fmt.Println("Internet: ", len(internet_geo))
+	fmt.Println(selected_internet.InternetType)
+}
+
+func appendCategory(a []string, b []string) []string {
+
+	check := make(map[string]int)
+	d := append(a, b...)
+	res := make([]string, 0)
+	for _, val := range d {
+		check[val] = 1
 	}
 
-	selected_internet := getInternetType(tmp_lon, tmp_lat)
-	fmt.Println(selected_internet.InternetType)
+	for letter, _ := range check {
+		res = append(res, letter)
+	}
+
+	return res
 }
 
 func getInternetType(lon string, lat string) ObjInternetType {
@@ -362,5 +659,4 @@ func loadInternetSpeeds() {
 		}
 		fmt.Println("states done: " + lstObjStateLya[states].State_Abbr)
 	}
-
 }

@@ -19,6 +19,7 @@ type ObjStreetsLya struct {
 	STREET_LOCALITY_PID string
 	Data                []string
 	InternetType        string
+	local_pid           string
 }
 
 type ObjSuburbLya struct {
@@ -81,10 +82,10 @@ type ObjApiSuburbLya struct {
 }
 
 type ObjApiStreetsLya struct {
-	STREET_NAME      string
-	STREET_TYPE_CODE string
-	/*LONGITUDE           string
-	LATITUDE            string*/
+	STREET_NAME         string
+	STREET_TYPE_CODE    string
+	LONGITUDE           string
+	LATITUDE            string
 	STREET_LOCALITY_PID string
 }
 
@@ -172,6 +173,8 @@ func convertStreetToApi(street ObjStreetsLya) ObjApiStreetsLya {
 		STREET_NAME:         street.STREET_NAME,
 		STREET_TYPE_CODE:    street.STREET_TYPE_CODE,
 		STREET_LOCALITY_PID: street.STREET_LOCALITY_PID,
+		LONGITUDE:           street.LONGITUDE,
+		LATITUDE:            street.LATITUDE,
 	}
 	return tmp_streets
 }
