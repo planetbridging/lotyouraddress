@@ -6,9 +6,10 @@ import (
 )
 
 type ObjInternetType struct {
-	LONGITUDE    string
-	LATITUDE     string
-	InternetType string
+	LONGITUDE       string
+	LATITUDE        string
+	InternetType    string
+	selected_Street string
 }
 
 type ObjStreetsLya struct {

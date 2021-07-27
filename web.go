@@ -411,3 +411,7 @@ func internetSearch(search string) ObjInternetType {
 	}
 	return tmp_empty
 }
+
+func getCloseStreet(lat string, long string) {
+
+}
