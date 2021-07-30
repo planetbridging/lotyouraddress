@@ -33,8 +33,10 @@ func main() {
 	//fmt.Println(cp[0])
 	loadStates()
 	loadPostcodes()
-	//loadInternet()
+
 	loadStreets()
+	checkPreprocessedInternet()
+
 	//internetToStreetTesting()
 	//loadStreetGeo()
 	//loadStreetGeo()
@@ -399,7 +401,7 @@ func loadStreets() {
 					STREET_NAME:         tmp_line[3],
 					STREET_TYPE_CODE:    tmp_line[4],
 					local_pid:           tmp_line[5],
-					InternetType:        "",
+					internetType:        -1,
 					LONGITUDE:           tmp_line[1],
 					LATITUDE:            tmp_line[2],
 				}
@@ -453,7 +455,7 @@ func generateGeoStreets(index int, save string) {
 				STREET_NAME:         STREET_NAME,
 				STREET_TYPE_CODE:    STREET_TYPE_CODE,
 				local_pid:           LOCALITY_PID,
-				InternetType:        "",
+				internetType:        -1,
 				LONGITUDE:           "",
 				LATITUDE:            "",
 			}
@@ -564,15 +566,37 @@ LONGITUDE           string
 LATITUDE            string
 STREET_LOCALITY_PID string*/
 
+func checkPreprocessedInternet() {
+	//.currentInternetPathProcessed
+
+	cppi := readLocal(".currentInternetPathProcessed")
+	currentInternetPath = cppi[0]
+	internet_path := currentInternetPath + "internet_done.csv"
+	check_preprocessed := fileExists(internet_path)
+	if !check_preprocessed {
+		loadInternet()
+		internetToSuburbToStreetTesting(internet_path)
+	}
+
+}
+
 func loadInternet() {
 	//C:\Users\plane\OneDrive\Documents\development\data\internetnrenting\kmlconvert
 	//lawson frankston example
 	//tmp_lat := "-38.17599781"
 	//tmp_lon := "145.12900074"
+	//145.12900074,-38.17599781
 
 	//lamington mango hill example
-	tmp_lat := "-27.24106463"
-	tmp_lon := "153.04441987"
+	//tmp_lat := "-27.24106463"
+	//tmp_lon := "153.04441987"
+	//closest internet node
+	//fttp -27.241274 153.044381
+	//153.044381,-27.241274
+
+	//NSW2927371 example
+	//tmp_lat := "-34.57924181"
+	//tmp_lon := "150.74007459"
 
 	cp := readLocal(".currentInternetPath")
 	currentInternetPath = cp[0]
@@ -582,7 +606,8 @@ func loadInternet() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	//var tmp_lst_internet_get []string
+	var tmp_lst_internet_get []string
+
 	for _, f := range files {
 		internet_type := strings.Replace(f.Name(), ".csv", "", -1)
 		//if strings.Contains(internet_type, "wireless") || strings.Contains(internet_type, "satellite") {
@@ -596,23 +621,225 @@ func loadInternet() {
 			//fmt.Println(tmp_data[i])
 			cleaned := strings.ReplaceAll(tmp_data[i], " ", "")
 			row := strings.Split(cleaned, ",")
+			value := row[0] + "," + row[1]
+			tmp_lst_internet_get = append(tmp_lst_internet_get, value)
 			//value := row[0] + "," + row[1] + "," + internet_type
 			//tmp_lst_internet_get = append(tmp_lst_internet_get, value)
+			/*Fixed_wireless := false
+			FTTB := false
+			FTTDP_FTTC := false
+			FTTN := false
+			FTTP := false
+			HFC := false
+			Satellite := false
 			tmp_ObjInternetType := ObjInternetType{
-				LONGITUDE:    row[0],
-				LATITUDE:     row[1],
-				InternetType: internet_type,
-			}
+				LONGITUDE:      row[0],
+				LATITUDE:       row[1],
+				Fixed_wireless: Fixed_wireless,
+				FTTB:           FTTB,
+				FTTDP_FTTC:     FTTDP_FTTC,
+				FTTN:           FTTN,
+				FTTP:           FTTP,
+				HFC:            HFC,
+				Satellite:      Satellite,
+				//InternetType: internet_type,
+			}*/
 
-			internet_geo = append(internet_geo, tmp_ObjInternetType)
+			//internet_geo = append(internet_geo, tmp_ObjInternetType)
+
 		}
 		//}
 
 	}
-	selected_internet := getInternetType(tmp_lon, tmp_lat)
+
+	cleaned_data := unique(tmp_lst_internet_get)
+
+	//selected_internet := getInternetType(tmp_lon, tmp_lat)
 	//fmt.Println("Tmp: ", len(tmp_lst_internet_get))
-	fmt.Println("Internet: ", len(internet_geo))
-	fmt.Println(selected_internet.InternetType)
+	fmt.Println("Internet: ", len(cleaned_data))
+	fmt.Println("setupInterGeo")
+	setupInterGeo(cleaned_data)
+	fmt.Println("setupInternetType")
+	setupInternetType()
+	//fmt.Println(selected_internet.InternetType, selected_internet.LATITUDE, selected_internet.LONGITUDE)
+}
+
+func setupInterGeo(cleaned_data []string) {
+	for cd := range cleaned_data {
+		Fixed_wireless := false
+		FTTB := false
+		FTTDP_FTTC := false
+		FTTN := false
+		FTTP := false
+		HFC := false
+		Satellite := false
+		row := strings.Split(cleaned_data[cd], ",")
+		tmp_ObjInternetType := ObjInternetType{
+			LONGITUDE:      row[0],
+			LATITUDE:       row[1],
+			Fixed_wireless: Fixed_wireless,
+			FTTB:           FTTB,
+			FTTDP_FTTC:     FTTDP_FTTC,
+			FTTN:           FTTN,
+			FTTP:           FTTP,
+			HFC:            HFC,
+			Satellite:      Satellite,
+			//InternetType: internet_type,
+		}
+		internet_geo = append(internet_geo, tmp_ObjInternetType)
+	}
+}
+
+func setupInternetType() {
+
+	cp := readLocal(".currentInternetPath")
+	currentInternetPath = cp[0]
+
+	files, err := ioutil.ReadDir(currentInternetPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, f := range files {
+		internet_type := strings.Replace(f.Name(), ".csv", "", -1)
+		fmt.Println("loading up " + internet_type)
+		//var tmp_lst_internet_get []string
+		tmp_data := readLocal(currentInternetPath + f.Name())
+
+		occured := map[string]bool{}
+		//result := []string{}
+
+		for i := 1; i < len(tmp_data); i++ {
+			cleaned := strings.ReplaceAll(tmp_data[i], " ", "")
+			row := strings.Split(cleaned, ",")
+			value := row[0] + "," + row[1]
+			if occured[value] != true {
+				occured[value] = true
+
+				// Append to result slice.
+				//result = append(result, arr[e])
+			}
+		}
+
+		//Fixed_wireless := false //0
+		//FTTB := false           //1
+		//FTTDP_FTTC := false     //2
+		//FTTN := false           //3
+		//FTTP := false           //4
+		//HFC := false            //5
+		//Satellite := false      //6
+
+		if strings.Contains(internet_type, "fixed-wireless") {
+			//Fixed_wireless = true
+			fmt.Println("setting " + internet_type)
+			changingInternetType(0, occured)
+			fmt.Println("finished " + internet_type)
+		}
+
+		if strings.Contains(internet_type, "fttb") {
+			//FTTB = true
+			changingInternetType(1, occured)
+		}
+
+		if strings.Contains(internet_type, "fttdp_fttc") {
+			//FTTDP_FTTC = true
+			changingInternetType(2, occured)
+		}
+
+		if strings.Contains(internet_type, "fttn") {
+			//FTTN = true
+			changingInternetType(3, occured)
+		}
+
+		if strings.Contains(internet_type, "fttp") {
+			//FTTP = true
+			changingInternetType(4, occured)
+		}
+		if strings.Contains(internet_type, "hfc") {
+			//HFC = true
+			changingInternetType(5, occured)
+		}
+		if strings.Contains(internet_type, "satellite") {
+			//Satellite = true
+			changingInternetType(6, occured)
+		}
+
+	}
+}
+
+func changingInternetType(it int, occured map[string]bool) {
+	for i, _ := range internet_geo {
+		value := internet_geo[i].LONGITUDE + "," + internet_geo[i].LATITUDE
+		if occured[value] == true {
+
+			switch it {
+			case 0:
+				internet_geo[i].Fixed_wireless = true
+			case 1:
+				internet_geo[i].FTTB = true
+			case 2:
+				internet_geo[i].FTTDP_FTTC = true
+			case 3:
+				internet_geo[i].FTTN = true
+			case 4:
+				internet_geo[i].FTTP = true
+			case 5:
+				internet_geo[i].HFC = true
+			case 6:
+				internet_geo[i].Satellite = true
+			}
+
+		}
+	}
+}
+
+//C:\Users\plane\OneDrive\Documents\development\data\internetnrenting\cleaned
+func cleanInternetDups() {
+	cp := readLocal(".currentInternetPath")
+	currentInternetPath = cp[0]
+	saveTo := "/mnt/c/Users/plane/OneDrive/Documents/development/data/internetnrenting/cleaned/"
+	//current location :D files, err := ioutil.ReadDir("./")
+	files, err := ioutil.ReadDir(currentInternetPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, f := range files {
+		fmt.Println("cleaning: " + f.Name())
+		var newFile []string
+		newFile = append(newFile, "longitude,latitude")
+		tmp_data := readLocal(currentInternetPath + f.Name())
+		for i := 1; i < len(tmp_data); i++ {
+			cleaned := strings.ReplaceAll(tmp_data[i], " ", "")
+			row := strings.Split(cleaned, ",")
+			d := row[0] + "," + row[1]
+			newFile = append(newFile, d)
+		}
+
+		lst_cleaned := unique(newFile)
+
+		//d []string, location string
+		saveFile(lst_cleaned, saveTo+f.Name())
+	}
+}
+
+func unique(arr []string) []string {
+	occured := map[string]bool{}
+	result := []string{}
+
+	for e := range arr {
+
+		// check if already the mapped
+		// variable is set to true or not
+		if occured[arr[e]] != true {
+			occured[arr[e]] = true
+
+			// Append to result slice.
+			result = append(result, arr[e])
+		}
+	}
+
+	return result
 }
 
 func appendCategory(a []string, b []string) []string {
@@ -645,7 +872,7 @@ func getInternetType(lon string, lat string) ObjInternetType {
 	return selected
 }
 
-func loadInternetSpeeds() {
+/*func loadInternetSpeeds() {
 	fmt.Println("loading internet speeds to streets")
 	for states, _ := range lstObjStateLya {
 		for postcodes, _ := range lstObjStateLya[states].LstObjPostcodeLya {
@@ -660,40 +887,18 @@ func loadInternetSpeeds() {
 		}
 		fmt.Println("states done: " + lstObjStateLya[states].State_Abbr)
 	}
-}
+}*/
 
 func internetToStreetTesting() {
 	fmt.Println("internetToStreetTesting")
-	//single thread
-	/*for ig, _ := range internet_geo {
-		smallest := 9999999999999999.99999
-		var selected ObjStreetsLya
-		for states, _ := range lstObjStateLya {
-			for postcodes, _ := range lstObjStateLya[states].LstObjPostcodeLya {
-				for suburbs, _ := range lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya {
-					for streets, _ := range lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya {
-						tmp_lat := lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya[streets].LATITUDE
-						tmp_lon := lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya[streets].LONGITUDE
-						dis := getDistance(tmp_lat, tmp_lon, internet_geo[ig].LATITUDE, internet_geo[ig].LONGITUDE)
-						if dis <= smallest {
-							smallest = dis
-							selected = lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya[streets]
-						}
-					}
-				}
-			}
-		}
-		internet_geo[ig].selected_Street = selected
-		fmt.Println(ig, "/", len(internet_geo))
-	}*/
 
 	//testing 20000
 	oldTime := time.Now()
 	//sliceLength := len(internet_geo)
 	var wg sync.WaitGroup
 	//wg.Add(sliceLength)
-	wg.Add(20000)
-	for ig := 0; ig < 20000; ig++ {
+	wg.Add(5000)
+	for ig := 0; ig < 5000; ig++ {
 		//for ig, _ := range internet_geo {
 		go func(ig int) {
 			defer wg.Done()
@@ -725,6 +930,252 @@ func internetToStreetTesting() {
 	fmt.Printf("Seconds: %f\n", diff.Seconds())
 }
 
+func internetToSuburbTesting() {
+	fmt.Println("internetToSuburbTesting")
+
+	//testing 20000
+	oldTime := time.Now()
+	//sliceLength := len(internet_geo)
+	var wg sync.WaitGroup
+	//wg.Add(sliceLength)
+	wg.Add(5000)
+	for ig := 0; ig < 5000; ig++ {
+		//for ig, _ := range internet_geo {
+		go func(ig int) {
+			defer wg.Done()
+			smallest := 9999999999999999.99999
+			var selected string
+			for states, _ := range lstObjStateLya {
+				for postcodes, _ := range lstObjStateLya[states].LstObjPostcodeLya {
+					for suburbs, _ := range lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya {
+						tmp_lat := lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LATITUDE
+						tmp_lon := lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LONGITUDE
+						dis := getDistance(tmp_lat, tmp_lon, internet_geo[ig].LATITUDE, internet_geo[ig].LONGITUDE)
+						if dis <= smallest {
+							smallest = dis
+							selected = lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LOCALITY_PID
+						}
+					}
+				}
+			}
+			internet_geo[ig].selected_Street = selected
+		}(ig)
+	}
+
+	wg.Wait()
+	currentTime := time.Now()
+	diff := currentTime.Sub(oldTime)
+	//In seconds
+	fmt.Printf("Seconds: %f\n", diff.Seconds())
+}
+
+func internetToSuburbToStreetTesting(saveto string) {
+	fmt.Println("internetToSuburbToStreetTesting")
+
+	//testing 20000
+	oldTime := time.Now()
+	//sliceLength := len(internet_geo)
+	//var wg sync.WaitGroup
+	//wg.Add(sliceLength)
+	//wg.Add(1000)
+
+	var tmpObjInternetSuburb []ObjTmpInternetSuburbSort
+
+	//testing for ig := 0; ig < 10000; ig++ {
+	for ig, _ := range internet_geo {
+		//go func(ig int) {
+		//	defer wg.Done()
+		smallest := 9999999999999999.99999
+		var selected string
+		var lat string
+		var lon string
+		//_ = lon
+		//_ = lat
+		//_ = selected
+		for states, _ := range lstObjStateLya {
+			for postcodes, _ := range lstObjStateLya[states].LstObjPostcodeLya {
+				for suburbs, _ := range lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya {
+					tmp_lat := lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LATITUDE
+					tmp_lon := lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LONGITUDE
+					dis := getDistance(tmp_lat, tmp_lon, internet_geo[ig].LATITUDE, internet_geo[ig].LONGITUDE)
+					if dis <= smallest {
+						smallest = dis
+						selected = lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LOCALITY_PID
+						lat = lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LATITUDE
+						lon = lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LONGITUDE
+					}
+				}
+			}
+		}
+
+		found := false
+		for tmpobj, _ := range tmpObjInternetSuburb {
+			if tmpObjInternetSuburb[tmpobj].LOCALITY_PID == selected {
+				tmpObjInternetSuburb[tmpobj].LstInternet = append(tmpObjInternetSuburb[tmpobj].LstInternet, internet_geo[ig])
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			var tmplstinternet []ObjInternetType
+			tmplstinternet = append(tmplstinternet, internet_geo[ig])
+
+			getsubs := getSuburbDistance(
+				lat,
+				lon)
+			sorted := sortClosestSuburb(getsubs)
+
+			tmpAdd := ObjTmpInternetSuburbSort{
+				LONGITUDE:    lon,
+				LATITUDE:     lat,
+				LstInternet:  tmplstinternet,
+				LOCALITY_PID: selected,
+				sorted:       sorted,
+			}
+			tmpObjInternetSuburb = append(tmpObjInternetSuburb, tmpAdd)
+		}
+
+		//internet_geo[ig].selected_Street = selected
+		//	}(ig)
+	}
+
+	fmt.Println("Completed adding suburbs")
+
+	done := sortTmpInternetSuburbs(tmpObjInternetSuburb)
+	saveInternetProcessed(done, saveto)
+	//wg.Wait()
+	fmt.Println("SelectedSuburbs: ", len(tmpObjInternetSuburb))
+	currentTime := time.Now()
+	diff := currentTime.Sub(oldTime)
+	//In seconds
+	fmt.Printf("Seconds: %f\n", diff.Seconds())
+}
+
+func saveInternetProcessed(done []ObjTmpInternetSuburbSort, path string) {
+	var save []string
+	titles := "LONGITUDE,LATITUDE,selected_Street,Fixed_wireless,FTTB,FTTDP_FTTC,FTTN,FTTP,HFC,Satellite"
+	save = append(save, titles)
+	/*LONGITUDE string
+	LATITUDE  string
+	//InternetType    string
+	selected_Street string
+
+	Fixed_wireless bool
+	FTTB           bool
+	FTTDP_FTTC     bool
+	FTTN           bool
+	FTTP           bool
+	HFC            bool
+	Satellite      bool*/
+	for checkl1, _ := range done {
+		for checkl2, _ := range done[checkl1].LstInternet {
+			row := done[checkl1].LstInternet[checkl2].LONGITUDE + ","
+			row += done[checkl1].LstInternet[checkl2].LATITUDE + ","
+			row += done[checkl1].LstInternet[checkl2].selected_Street + ","
+			row += strconv.FormatBool(done[checkl1].LstInternet[checkl2].Fixed_wireless) + ","
+			row += strconv.FormatBool(done[checkl1].LstInternet[checkl2].FTTB) + ","
+			row += strconv.FormatBool(done[checkl1].LstInternet[checkl2].FTTDP_FTTC) + ","
+			row += strconv.FormatBool(done[checkl1].LstInternet[checkl2].FTTN) + ","
+			row += strconv.FormatBool(done[checkl1].LstInternet[checkl2].FTTP) + ","
+			row += strconv.FormatBool(done[checkl1].LstInternet[checkl2].HFC) + ","
+			row += strconv.FormatBool(done[checkl1].LstInternet[checkl2].Satellite)
+			save = append(save, row)
+			//fmt.Println(done[checkl1].LstInternet[checkl2], done[checkl1].LstInternet[checkl2].selected_Street)
+		}
+	}
+
+	saveFile(save, path)
+}
+
+func sortTmpInternetSuburbs(tmpObjInternetSuburb []ObjTmpInternetSuburbSort) []ObjTmpInternetSuburbSort {
+	var wg sync.WaitGroup
+	wg.Add(len(tmpObjInternetSuburb))
+	for t, _ := range tmpObjInternetSuburb {
+		go func(t int) {
+			defer wg.Done()
+			var tmpstreets []ObjStreetsLya
+			limit := 1000
+			for ts, _ := range tmpObjInternetSuburb[t].sorted {
+				tmpgetstreets := getStreets(tmpObjInternetSuburb[t].sorted[ts].LOCALITY_PID)
+
+				for tmp_str, _ := range tmpgetstreets {
+					tmpstreets = append(tmpstreets, tmpgetstreets[tmp_str])
+				}
+
+				if ts <= limit {
+					break
+				}
+			}
+
+			for internet, _ := range tmpObjInternetSuburb[t].LstInternet {
+				smallest := 9999999999999999.99999
+				var selected string
+				for f, _ := range tmpstreets {
+					tmp_lat := tmpstreets[f].LATITUDE
+					tmp_lon := tmpstreets[f].LONGITUDE
+					dis := getDistance(tmp_lat, tmp_lon, tmpObjInternetSuburb[t].LstInternet[internet].LATITUDE, tmpObjInternetSuburb[t].LstInternet[internet].LONGITUDE)
+					if dis <= smallest {
+						smallest = dis
+						selected = tmpstreets[f].STREET_LOCALITY_PID
+					}
+				}
+				tmpObjInternetSuburb[t].LstInternet[internet].selected_Street = selected
+			}
+
+		}(t)
+	}
+
+	wg.Wait()
+	return tmpObjInternetSuburb
+}
+
+func getStreets(local_pid string) []ObjStreetsLya {
+	var tmpstreets []ObjStreetsLya
+	for states, _ := range lstObjStateLya {
+		for postcodes, _ := range lstObjStateLya[states].LstObjPostcodeLya {
+			for suburbs, _ := range lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya {
+				if local_pid == lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LOCALITY_PID {
+
+					return lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya
+				}
+			}
+		}
+	}
+	return tmpstreets
+}
+
+/*getsubs := getSuburbDistance(
+	lat,
+	lon)
+sorted := sortClosestSuburb(getsubs)
+smallest_stret := 9999999999999999.99999
+_ = smallest_stret
+var selected_street string
+subcount := 50
+for sort, _ := range sorted {
+	for states, _ := range lstObjStateLya {
+		for postcodes, _ := range lstObjStateLya[states].LstObjPostcodeLya {
+			for suburbs, _ := range lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya {
+				if sorted[sort].LOCALITY_PID == lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LOCALITY_PID {
+					tmp_lat := lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LATITUDE
+					tmp_lon := lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LONGITUDE
+					dis := getDistance(tmp_lat, tmp_lon, internet_geo[ig].LATITUDE, internet_geo[ig].LONGITUDE)
+					if dis <= smallest {
+						smallest_stret = dis
+						selected_street = lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LOCALITY_PID
+					}
+				}
+
+			}
+		}
+	}
+	subcount += 1
+	if subcount >= 50 {
+		break
+	}
+}*/
+//---------------------------------------------------
 /*oldTime := time.Now()
 fmt.Println("updating geo streets in state: " + lstObjStateLya[index].State_Abbr)
 tmp_streets_geo := readLocal(currentPath + "G-NAF/G-NAF MAY 2021/Standard/" + lstObjStateLya[index].State_Abbr + "_STREET_LOCALITY_POINT_psv.psv")
@@ -749,3 +1200,26 @@ currentTime := time.Now()
 diff := currentTime.Sub(oldTime)
 //In seconds
 fmt.Printf("Seconds: %f\n", diff.Seconds())*/
+
+//single thread
+/*for ig, _ := range internet_geo {
+	smallest := 9999999999999999.99999
+	var selected ObjStreetsLya
+	for states, _ := range lstObjStateLya {
+		for postcodes, _ := range lstObjStateLya[states].LstObjPostcodeLya {
+			for suburbs, _ := range lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya {
+				for streets, _ := range lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya {
+					tmp_lat := lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya[streets].LATITUDE
+					tmp_lon := lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya[streets].LONGITUDE
+					dis := getDistance(tmp_lat, tmp_lon, internet_geo[ig].LATITUDE, internet_geo[ig].LONGITUDE)
+					if dis <= smallest {
+						smallest = dis
+						selected = lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya[streets]
+					}
+				}
+			}
+		}
+	}
+	internet_geo[ig].selected_Street = selected
+	fmt.Println(ig, "/", len(internet_geo))
+}*/

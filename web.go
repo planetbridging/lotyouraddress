@@ -102,9 +102,11 @@ func handlerFunc(w http.ResponseWriter, r *http.Request) {
 			//fmt.Fprint(w, manualRebuild)
 		}
 	} else if okinternet {
-		street_pid := kinternet[0]
+		_ = kinternet
+		/*street_pid := kinternet[0]
 		tmp_internet := internetSearch(street_pid)
-		fmt.Fprintf(w, "%s", tmp_internet.InternetType)
+		fmt.Fprintf(w, "%s", tmp_internet.InternetType)*/
+		fmt.Fprint(w, "Currently not setup")
 		found = true
 	} else {
 		fmt.Fprint(w, "Welcome to lotyouraddress api")
@@ -388,7 +390,7 @@ func suburbSearch(search string) []ObjApiSuburbSearch {
 	return results
 }
 
-func internetSearch(search string) ObjInternetType {
+/*func internetSearch(search string) ObjInternetType {
 	tmp_empty := ObjInternetType{
 		InternetType: "empty",
 	}
@@ -410,7 +412,7 @@ func internetSearch(search string) ObjInternetType {
 		//fmt.Println("states done: " + lstObjStateLya[states].State_Abbr)
 	}
 	return tmp_empty
-}
+}*/
 
 func getCloseStreet(lat string, long string) {
 

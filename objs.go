@@ -5,11 +5,27 @@ import (
 	"fmt"
 )
 
+type ObjTmpInternetSuburbSort struct {
+	LONGITUDE    string
+	LATITUDE     string
+	LOCALITY_PID string
+	LstInternet  []ObjInternetType
+	sorted       []ObjDistance
+}
+
 type ObjInternetType struct {
-	LONGITUDE       string
-	LATITUDE        string
-	InternetType    string
+	LONGITUDE string
+	LATITUDE  string
+	//InternetType    string
 	selected_Street string
+
+	Fixed_wireless bool
+	FTTB           bool
+	FTTDP_FTTC     bool
+	FTTN           bool
+	FTTP           bool
+	HFC            bool
+	Satellite      bool
 }
 
 type ObjStreetsLya struct {
@@ -19,7 +35,7 @@ type ObjStreetsLya struct {
 	LATITUDE            string
 	STREET_LOCALITY_PID string
 	Data                []string
-	InternetType        string
+	internetType        int
 	local_pid           string
 }
 
