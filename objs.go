@@ -5,6 +5,18 @@ import (
 	"fmt"
 )
 
+type ObjProcessInternet struct {
+	Street_id      string
+	data           map[string]bool
+	Fixed_wireless bool
+	FTTB           bool
+	FTTDP_FTTC     bool
+	FTTN           bool
+	FTTP           bool
+	HFC            bool
+	Satellite      bool
+}
+
 type ObjTmpInternetSuburbSort struct {
 	LONGITUDE    string
 	LATITUDE     string
@@ -37,6 +49,7 @@ type ObjStreetsLya struct {
 	Data                []string
 	internetType        int
 	local_pid           string
+	Selected_Internet   ObjApiInternetType
 }
 
 type ObjSuburbLya struct {
@@ -69,7 +82,15 @@ type ObjDistance struct {
 }
 
 //----------------------------------api
-
+type ObjApiInternetType struct {
+	Fixed_wireless bool
+	FTTB           bool
+	FTTDP_FTTC     bool
+	FTTN           bool
+	FTTP           bool
+	HFC            bool
+	Satellite      bool
+}
 type ObjApiStateLya struct {
 	State_Abbr     string
 	State_Name     string
@@ -104,6 +125,7 @@ type ObjApiStreetsLya struct {
 	LONGITUDE           string
 	LATITUDE            string
 	STREET_LOCALITY_PID string
+	Selected_Internet   ObjApiInternetType
 }
 
 type ObjApiSuburbStreetLya struct {
@@ -192,6 +214,7 @@ func convertStreetToApi(street ObjStreetsLya) ObjApiStreetsLya {
 		STREET_LOCALITY_PID: street.STREET_LOCALITY_PID,
 		LONGITUDE:           street.LONGITUDE,
 		LATITUDE:            street.LATITUDE,
+		Selected_Internet:   street.Selected_Internet,
 	}
 	return tmp_streets
 }

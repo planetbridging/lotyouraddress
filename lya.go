@@ -572,12 +572,261 @@ func checkPreprocessedInternet() {
 	cppi := readLocal(".currentInternetPathProcessed")
 	currentInternetPath = cppi[0]
 	internet_path := currentInternetPath + "internet_done.csv"
+	internet_path_processed := currentInternetPath + "internet_processed.csv"
 	check_preprocessed := fileExists(internet_path)
-	if !check_preprocessed {
-		loadInternet()
-		internetToSuburbToStreetTesting(internet_path)
+	check_postprocessed := fileExists(internet_path_processed)
+	if !check_postprocessed {
+		if !check_preprocessed {
+			loadInternet()
+			internetToSuburbToStreetTesting(internet_path)
+		} else {
+			//loading and testing processed data
+			loadInternetIntoStreets(internet_path)
+			saveNewInternet(internet_path_processed)
+		}
+	} else {
+		finishedInternetProcessingLoadingFile(internet_path_processed)
 	}
 
+}
+
+func finishedInternetProcessingLoadingFile(path string) {
+	fmt.Println("Loading into lya pool")
+	data := readLocal(path)
+	var wg sync.WaitGroup
+	wg.Add(len(data) - 1)
+	for i := 1; i < len(data); i++ {
+		go func(i int) {
+			defer wg.Done()
+			if strings.Contains(data[i], ",") {
+				//STATE,Postcode,Suburb,Street,Fixed_wireless,FTTB,FTTDP_FTTC,FTTN,FTTP,HFC,Satellite
+				row := strings.Split(data[i], ",")
+
+				tmp_internet_type := ObjApiInternetType{
+					Fixed_wireless: false,
+					FTTB:           false,
+					FTTDP_FTTC:     false,
+					FTTN:           false,
+					FTTP:           false,
+					HFC:            false,
+					Satellite:      false,
+				}
+
+				if strings.Contains(row[4], "true") {
+					tmp_internet_type.Fixed_wireless = true
+				}
+				if strings.Contains(row[5], "true") {
+					tmp_internet_type.FTTB = true
+				}
+				if strings.Contains(row[6], "true") {
+					tmp_internet_type.FTTDP_FTTC = true
+				}
+				if strings.Contains(row[7], "true") {
+					tmp_internet_type.FTTN = true
+				}
+				if strings.Contains(row[8], "true") {
+					tmp_internet_type.FTTP = true
+				}
+				if strings.Contains(row[9], "true") {
+					tmp_internet_type.HFC = true
+				}
+				if strings.Contains(row[10], "true") {
+					tmp_internet_type.Satellite = true
+				}
+				setInternetToStatePostSubStreet(row[0], row[1], row[2], row[3], tmp_internet_type)
+			}
+		}(i)
+	}
+
+}
+
+func loadInternetIntoStreets(path string) {
+	fmt.Println("loadInternetIntoStreets")
+	//LONGITUDE,LATITUDE,selected_Street,Fixed_wireless,FTTB,FTTDP_FTTC,FTTN,FTTP,HFC,Satellite
+	occured := map[string]bool{}
+	occured_street_id := map[string]bool{}
+	data := readLocal(path)
+	var uni_street_data []string
+	var uni_street_codes []string
+	var lst_uni_objs []ObjProcessInternet
+	for i := 1; i < len(data); i++ {
+		if strings.Contains(data[i], ",") {
+			row := strings.Split(data[i], ",")
+			//selected_Street,Fixed_wireless,FTTB,FTTDP_FTTC,FTTN,FTTP,HFC,Satellite
+			row_without_geo := row[2] + "," + row[3] + "," + row[4] + "," + row[5] + "," + row[6] + "," + row[7] + "," + row[8] + "," + row[9]
+			if occured[row_without_geo] != true {
+				occured[row_without_geo] = true
+				uni_street_data = append(uni_street_data, row_without_geo)
+			}
+
+			if occured_street_id[row[2]] != true {
+				occured_street_id[row[2]] = true
+				tmp_uni_data := map[string]bool{}
+				uni_street_codes = append(uni_street_codes, row[2])
+				tmp := ObjProcessInternet{
+					Street_id:      row[2],
+					Fixed_wireless: false,
+					FTTB:           false,
+					FTTDP_FTTC:     false,
+					FTTN:           false,
+					FTTP:           false,
+					HFC:            false,
+					Satellite:      false,
+					data:           tmp_uni_data,
+				}
+				lst_uni_objs = append(lst_uni_objs, tmp)
+			}
+		}
+	}
+
+	fmt.Println("Uni Street data: ", len(uni_street_data))
+	fmt.Println("Uni Street id: ", len(occured_street_id))
+	fmt.Println("pre processing start")
+
+	//way to slow even with multi threading
+	/*var wg sync.WaitGroup
+	wg.Add(len(lst_uni_objs))
+	for r := 0; r < 10000; r++ {
+		//for r, _ := range lst_uni_objs {
+		go func(r int) {
+			defer wg.Done()
+			for d, _ := range uni_street_data {
+				tmp_row := strings.Split(uni_street_data[d], ",")
+				if tmp_row[0] == lst_uni_objs[r].Street_id {
+					if lst_uni_objs[r].data[uni_street_data[r]] != true {
+						lst_uni_objs[r].data[uni_street_data[r]] = true
+					}
+				}
+			}
+		}(r)
+	}
+	wg.Wait()*/
+
+	//for r := 0; r < 10000; r++ {
+	for r, _ := range uni_street_data {
+		tmp_row := strings.Split(uni_street_data[r], ",")
+
+		for u, _ := range lst_uni_objs {
+			if lst_uni_objs[u].Street_id == tmp_row[0] {
+				if lst_uni_objs[u].data[uni_street_data[r]] != true {
+					lst_uni_objs[u].data[uni_street_data[r]] = true
+				}
+				break
+			}
+		}
+		fmt.Println(r, "/", len(uni_street_data))
+	}
+	fmt.Println("pre processing complete")
+
+	var wg sync.WaitGroup
+	wg.Add(len(lst_uni_objs))
+	for luo, _ := range lst_uni_objs {
+		go func(luo int) {
+			defer wg.Done()
+			tmp_internet_type := ObjApiInternetType{
+				Fixed_wireless: false,
+				FTTB:           false,
+				FTTDP_FTTC:     false,
+				FTTN:           false,
+				FTTP:           false,
+				HFC:            false,
+				Satellite:      false,
+			}
+
+			for element, _ := range lst_uni_objs[luo].data {
+				tmp_row := strings.Split(element, ",")
+				if strings.Contains(tmp_row[1], "true") {
+					tmp_internet_type.Fixed_wireless = true
+				}
+				if strings.Contains(tmp_row[2], "true") {
+					tmp_internet_type.FTTB = true
+				}
+				if strings.Contains(tmp_row[3], "true") {
+					tmp_internet_type.FTTDP_FTTC = true
+				}
+				if strings.Contains(tmp_row[4], "true") {
+					tmp_internet_type.FTTN = true
+				}
+				if strings.Contains(tmp_row[5], "true") {
+					tmp_internet_type.FTTP = true
+				}
+				if strings.Contains(tmp_row[6], "true") {
+					tmp_internet_type.HFC = true
+				}
+				if strings.Contains(tmp_row[7], "true") {
+					tmp_internet_type.Satellite = true
+				}
+				//fmt.Println("Key:", key, "=>", "Element:", element)
+			}
+
+			setInternetToStreet(lst_uni_objs[luo].Street_id, tmp_internet_type)
+		}(luo)
+	}
+	wg.Wait()
+}
+
+func setInternetToStreet(street_id string, tmp ObjApiInternetType) bool {
+	for states, _ := range lstObjStateLya {
+		for postcodes, _ := range lstObjStateLya[states].LstObjPostcodeLya {
+			for suburbs, _ := range lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya {
+				for streets, _ := range lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya {
+					if street_id == lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya[streets].STREET_LOCALITY_PID {
+						lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya[streets].Selected_Internet = tmp
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
+}
+
+func setInternetToStatePostSubStreet(state string, postcode string, suburb string, street_id string, tmp ObjApiInternetType) bool {
+	for states, _ := range lstObjStateLya {
+		if state == lstObjStateLya[states].State_Abbr {
+			for postcodes, _ := range lstObjStateLya[states].LstObjPostcodeLya {
+				if postcode == lstObjStateLya[states].LstObjPostcodeLya[postcodes].Postcode {
+					for suburbs, _ := range lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya {
+						if suburb == lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LOCALITY_PID {
+							for streets, _ := range lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya {
+								if street_id == lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya[streets].STREET_LOCALITY_PID {
+									lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya[streets].Selected_Internet = tmp
+									return true
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return false
+}
+
+func saveNewInternet(save_path string) {
+	var save_complete_processing []string
+	save_complete_processing = append(save_complete_processing, "STATE,Postcode,Suburb,Street,Fixed_wireless,FTTB,FTTDP_FTTC,FTTN,FTTP,HFC,Satellite")
+	for states, _ := range lstObjStateLya {
+		for postcodes, _ := range lstObjStateLya[states].LstObjPostcodeLya {
+			for suburbs, _ := range lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya {
+				for streets, _ := range lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya {
+					save := lstObjStateLya[states].State_Abbr + ","
+					save += lstObjStateLya[states].LstObjPostcodeLya[postcodes].Postcode + ","
+					save += lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LOCALITY_PID + ","
+					save += lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya[streets].STREET_LOCALITY_PID + ","
+					save += strconv.FormatBool(lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya[streets].Selected_Internet.Fixed_wireless) + ","
+					save += strconv.FormatBool(lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya[streets].Selected_Internet.FTTB) + ","
+					save += strconv.FormatBool(lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya[streets].Selected_Internet.FTTDP_FTTC) + ","
+					save += strconv.FormatBool(lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya[streets].Selected_Internet.FTTN) + ","
+					save += strconv.FormatBool(lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya[streets].Selected_Internet.FTTP) + ","
+					save += strconv.FormatBool(lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya[streets].Selected_Internet.HFC) + ","
+					save += strconv.FormatBool(lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya[streets].Selected_Internet.Satellite)
+					save_complete_processing = append(save_complete_processing, save)
+				}
+			}
+		}
+	}
+	saveFile(save_complete_processing, save_path)
 }
 
 func loadInternet() {
