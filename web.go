@@ -65,7 +65,7 @@ func handlerFunc(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "%s", tmp_json)
 		found = true
 	} else if !okst && !okpo && !oksu && !okstr && search_okstr {
-		showStreetSearch := streetSearch(search_kstreet[0])
+		showStreetSearch := streetSearch(search_kstreet[0], 20)
 		tmp_json, err := json.Marshal(showStreetSearch)
 		if err != nil {
 			log.Fatal("Cannot encode street search to JSON ", err)
@@ -73,7 +73,7 @@ func handlerFunc(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "%s", tmp_json)
 		found = true
 	} else if !okst && !okpo && !oksu && !okstr && search_oksu {
-		showSuburbSearch := suburbSearch(search_ksuburb[0])
+		showSuburbSearch := suburbSearch(search_ksuburb[0], 20)
 		tmp_json, err := json.Marshal(showSuburbSearch)
 		if err != nil {
 			log.Fatal("Cannot encode suburb search to JSON ", err)
@@ -325,7 +325,7 @@ func apiStreet(search string, search_postcode string, search_suburb string, sear
 	return tmp_streets
 }
 
-func streetSearch(search string) []ObjApiStreetSearch {
+func streetSearch(search string, limiter int) []ObjApiStreetSearch {
 	var results []ObjApiStreetSearch
 	count := 0
 	for states, _ := range lstObjStateLya {
@@ -346,10 +346,11 @@ func streetSearch(search string) []ObjApiStreetSearch {
 							lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs],
 							lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya[streets])
 						results = append(results, tmp_full)
-					}
+						count += 1
 
-					if count >= 20 {
-						return results
+						if count >= limiter {
+							return results
+						}
 					}
 
 				}
@@ -362,7 +363,7 @@ func streetSearch(search string) []ObjApiStreetSearch {
 	return results
 }
 
-func suburbSearch(search string) []ObjApiSuburbSearch {
+func suburbSearch(search string, limiter int) []ObjApiSuburbSearch {
 	count := 0
 	var results []ObjApiSuburbSearch
 	for states, _ := range lstObjStateLya {
@@ -378,11 +379,12 @@ func suburbSearch(search string) []ObjApiSuburbSearch {
 						lstObjStateLya[states].LstObjPostcodeLya[postcodes],
 						lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs])
 					results = append(results, tmp_full)
+					count += 1
+					if count >= limiter {
+						return results
+					}
 				}
 
-				if count >= 20 {
-					return results
-				}
 			}
 		}
 

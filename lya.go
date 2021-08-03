@@ -77,14 +77,19 @@ func main() {
 	http.ListenAndServe(":3000", nil)
 }
 
-func findSuburb(name string) []ObjSuburbLya {
+func findSuburb(name string, limiter int) []ObjSuburbLya {
 	var lstSuburbs []ObjSuburbLya
+	var count int
 	for states, _ := range lstObjStateLya {
 		for postcodes, _ := range lstObjStateLya[states].LstObjPostcodeLya {
 			for suburbs, _ := range lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya {
 				tmp_name := lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].Suburb
 				if strings.Contains(tmp_name, name) {
 					lstSuburbs = append(lstSuburbs, lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs])
+					count += 1
+					if count >= limiter {
+						return lstSuburbs
+					}
 				}
 			}
 		}
