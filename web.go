@@ -22,6 +22,7 @@ func handlerFunc(w http.ResponseWriter, r *http.Request) {
 	kstreet, okstr := r.URL.Query()["street"]
 
 	search_kstreet, search_okstr := r.URL.Query()["search_street"]
+	search_kidstreet, search_okidstr := r.URL.Query()["search_street_id"]
 	search_ksuburb, search_oksu := r.URL.Query()["search_suburb"]
 
 	knearsuburbs, oknearsuburbs := r.URL.Query()["near_suburb"]
@@ -108,9 +109,16 @@ func handlerFunc(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "%s", tmp_internet.InternetType)*/
 		fmt.Fprint(w, "Currently not setup")
 		found = true
-	} else {
-		fmt.Fprint(w, "Welcome to lotyouraddress api")
-		//found = true
+	} else if search_okidstr {
+		found = true
+		search_kidstreet := search_kidstreet[0]
+		tmp_streetidsearch := streetIdSearch(search_kidstreet)
+		tmp_json, err := json.Marshal(tmp_streetidsearch)
+		if err != nil {
+			log.Fatal("Cannot encode near suburb to JSON ", err)
+		}
+
+		fmt.Fprintf(w, "%s", tmp_json)
 	}
 
 	if !found {
@@ -392,20 +400,16 @@ func suburbSearch(search string, limiter int) []ObjApiSuburbSearch {
 	return results
 }
 
-/*func internetSearch(search string) ObjInternetType {
-	tmp_empty := ObjInternetType{
-		InternetType: "empty",
-	}
+func streetIdSearch(search string) ObjApiStreetsLya {
 	for states, _ := range lstObjStateLya {
 		for postcodes, _ := range lstObjStateLya[states].LstObjPostcodeLya {
 			for suburbs, _ := range lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya {
 				for streets, _ := range lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya {
 
 					if search == lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya[streets].STREET_LOCALITY_PID {
-						tmp_lat := lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya[streets].LATITUDE
-						tmp_lon := lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya[streets].LONGITUDE
-						selected_internet := getInternetType(tmp_lon, tmp_lat)
-						return selected_internet
+						tmp_full := convertStreetToApi(
+							lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya[streets])
+						return tmp_full
 					}
 					//lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LstObjStreetsLya[streets].InternetType = selected_internet.InternetType
 				}
@@ -413,8 +417,9 @@ func suburbSearch(search string, limiter int) []ObjApiSuburbSearch {
 		}
 		//fmt.Println("states done: " + lstObjStateLya[states].State_Abbr)
 	}
-	return tmp_empty
-}*/
+	tmp := ObjApiStreetsLya{STREET_NAME: ""}
+	return tmp
+}
 
 func getCloseStreet(lat string, long string) {
 
