@@ -14,7 +14,6 @@ func readLocal(path string) []string {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
 	// optionally, resize scanner's capacity for lines over 64K, see next example
@@ -26,6 +25,8 @@ func readLocal(path string) []string {
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
 	}
+	file.Close()
+	//runtime.GC()
 	return lstContents
 }
 
@@ -36,7 +37,6 @@ func readFindAllPostcodes(path string) []string {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
 	// optionally, resize scanner's capacity for lines over 64K, see next example
@@ -57,6 +57,7 @@ func readFindAllPostcodes(path string) []string {
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
 	}
+	file.Close()
 	return lstData
 }
 
@@ -99,4 +100,16 @@ func fileExists(filename string) bool {
 		return false
 	}
 	return !info.IsDir()
+}
+
+func createFolder(path string) {
+	_, err := os.Stat(path)
+
+	if os.IsNotExist(err) {
+		errDir := os.MkdirAll(path, 0755)
+		if errDir != nil {
+			log.Fatal(err)
+		}
+
+	}
 }

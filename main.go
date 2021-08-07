@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -30,12 +31,17 @@ func main() {
 	//currentPath = "/mnt/c/Users/plane/OneDrive/Documents/development/data/addy/MAY21_GNAF_PipeSeparatedValue/"
 	cp := readLocal(".currentPath")
 	currentPath = cp[0]
+
 	//fmt.Println(cp[0])
 	loadStates()
+
 	loadPostcodes()
 
 	loadStreets()
+
 	checkPreprocessedInternet()
+
+	setupLocalStreetAccess()
 
 	//internetToStreetTesting()
 	//loadStreetGeo()
@@ -70,11 +76,228 @@ func main() {
 	for i := 0; i < 50; i++ {
 		fmt.Println(sorted[i])
 	}*/
+	internet_geo = nil
 
+	exportLya()
+
+	//runtime.GC()
 	fmt.Println("Lotyouraddress running")
 	http.HandleFunc("/", handlerFunc)
 	http.Handle("/web/", http.FileServer(http.Dir(*root)))
 	http.ListenAndServe(":3000", nil)
+}
+
+func exportLya() {
+	tmp_folder_path := currentPath + "G-NAF/G-NAF MAY 2021/Standard/"
+	tmp_full_local_export := tmp_folder_path + "export/"
+	createFolder(tmp_full_local_export)
+
+	tmp_full_postcodes_export := tmp_folder_path + "export/postcodes/"
+	createFolder(tmp_full_postcodes_export)
+
+	tmp_full_suburbs_export := tmp_folder_path + "export/suburbs/"
+	createFolder(tmp_full_suburbs_export)
+
+	states_local := tmp_full_local_export + "STATES.csv"
+	if !fileExists(states_local) {
+		exportStates(states_local)
+	}
+
+	exportPostcodes(tmp_full_postcodes_export)
+	exportSuburbs(tmp_full_suburbs_export)
+}
+
+/*STREET_NAME         string
+STREET_TYPE_CODE    string
+LONGITUDE           string
+LATITUDE            string
+STREET_LOCALITY_PID string
+Data                []string
+internetType        int
+local_pid           string
+Selected_Internet   ObjApiInternetType*/
+
+//internet
+
+/*Fixed_wireless bool
+FTTB           bool
+FTTDP_FTTC     bool
+FTTN           bool
+FTTP           bool
+HFC            bool
+Satellite      bool*/
+
+func exportSuburbs(path string) {
+	fmt.Println("exporting suburbs")
+	for s, _ := range lstObjStateLya {
+		state_folder := path + lstObjStateLya[s].State_Abbr + "/"
+		createFolder(state_folder)
+		for p, _ := range lstObjStateLya[s].LstObjPostcodeLya {
+			postcode_folder := state_folder + lstObjStateLya[s].LstObjPostcodeLya[p].Postcode + "/"
+			createFolder(postcode_folder)
+
+			for u, _ := range lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya {
+				save_path := postcode_folder + lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LOCALITY_PID + "_"
+				save_path += strings.ReplaceAll(lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LOCALITY_PID+".csv", " ", "")
+				if !fileExists(save_path) {
+					var data []string
+					title := "STREET_LOCALITY_PID,STREET_NAME,STREET_TYPE_CODE,LONGITUDE,LATITUDE,"
+					title += "Fixed_wireless,FTTB,FTTDP_FTTC,FTTN,FTTP,HFC,Satellite"
+					data = append(data, title)
+					for r, _ := range lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya {
+						row := lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya[r].STREET_LOCALITY_PID + ","
+						row += lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya[r].STREET_NAME + ","
+						row += lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya[r].STREET_TYPE_CODE + ","
+						row += lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya[r].LONGITUDE + ","
+						row += lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya[r].LATITUDE + ","
+						row += strconv.FormatBool(lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya[r].Selected_Internet.Fixed_wireless) + ","
+						row += strconv.FormatBool(lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya[r].Selected_Internet.FTTB) + ","
+						row += strconv.FormatBool(lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya[r].Selected_Internet.FTTDP_FTTC) + ","
+						row += strconv.FormatBool(lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya[r].Selected_Internet.FTTN) + ","
+						row += strconv.FormatBool(lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya[r].Selected_Internet.FTTP) + ","
+						row += strconv.FormatBool(lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya[r].Selected_Internet.HFC) + ","
+						row += strconv.FormatBool(lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya[r].Selected_Internet.Satellite)
+						data = append(data, row)
+					}
+					saveFile(data, save_path)
+				}
+			}
+
+		}
+	}
+}
+
+func exportPostcodes(path string) {
+	fmt.Println("exporting postcodes")
+	for s, _ := range lstObjStateLya {
+		state_folder := path + lstObjStateLya[s].State_Abbr + "/"
+		createFolder(state_folder)
+		for p, _ := range lstObjStateLya[s].LstObjPostcodeLya {
+			save_path := state_folder + lstObjStateLya[s].LstObjPostcodeLya[p].Postcode + ".csv"
+			if !fileExists(save_path) {
+				var data []string
+				data = append(data, "LOCALITY_PID,Suburb,LONGITUDE,LATITUDE,Street_Count")
+				for u, _ := range lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya {
+					street_count := len(lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya)
+					row := lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LOCALITY_PID + ","
+					row += lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].Suburb + ","
+					row += lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LONGITUDE + ","
+					row += lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LATITUDE + ","
+					row += strconv.Itoa(street_count)
+					data = append(data, row)
+				}
+
+				saveFile(data, save_path)
+			}
+
+		}
+	}
+}
+
+func exportStates(path string) {
+	fmt.Println("exporting states")
+	var data []string
+	data = append(data, "State,Abbr,Postcode_count,Suburb_count,Street_Count")
+
+	for s, _ := range lstObjStateLya {
+		postcode_count := 0
+		suburb_count := 0
+		street_count := 0
+		postcode_count += len(lstObjStateLya[s].LstObjPostcodeLya)
+		for p, _ := range lstObjStateLya[s].LstObjPostcodeLya {
+
+			suburb_count += len(lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya)
+
+			for u, _ := range lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya {
+				street_count += len(lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya)
+			}
+		}
+		row := lstObjStateLya[s].State_Name + "," + lstObjStateLya[s].State_Abbr
+		row += "," + strconv.Itoa(postcode_count)
+		row += "," + strconv.Itoa(suburb_count)
+		row += "," + strconv.Itoa(street_count)
+		data = append(data, row)
+	}
+
+	saveFile(data, path)
+}
+
+func setupLocalStreetAccess() {
+	tmp_folder_path := currentPath + "G-NAF/G-NAF MAY 2021/Standard/"
+	tmp_full_local_street := tmp_folder_path + "StreetAccess/"
+	createFolder(tmp_full_local_street)
+	if fileExists(tmp_full_local_street) {
+		fmt.Println("setup ready")
+	} else {
+		createLocalStreetFolders(tmp_full_local_street)
+	}
+
+	fmt.Println("setting up local street access")
+	createLocalStreetFiles(tmp_full_local_street, tmp_folder_path)
+}
+
+func createLocalStreetFolders(tmp_full_local_street string) {
+	for states, _ := range lstObjStateLya {
+		state_path := tmp_full_local_street + lstObjStateLya[states].State_Abbr + "/"
+		createFolder(state_path)
+		sliceLength := len(lstObjStateLya[states].LstObjPostcodeLya)
+		var wg sync.WaitGroup
+		wg.Add(sliceLength)
+		for postcodes, _ := range lstObjStateLya[states].LstObjPostcodeLya {
+
+			go func(postcodes int) {
+				defer wg.Done()
+				postcode_path := state_path + lstObjStateLya[states].LstObjPostcodeLya[postcodes].Postcode + "/"
+				createFolder(postcode_path)
+				for suburbs, _ := range lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya {
+					suburb_path := postcode_path + lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LOCALITY_PID + "/"
+					createFolder(suburb_path)
+				}
+			}(postcodes)
+
+		}
+		wg.Wait()
+	}
+}
+
+func createLocalStreetFiles(tmp_full_local_street string, tmp_folder_path string) {
+	for states, _ := range lstObjStateLya {
+		state_path := tmp_full_local_street + lstObjStateLya[states].State_Abbr + "/"
+		read_state := readLocal(tmp_folder_path + lstObjStateLya[states].State_Abbr + "_ADDRESS_DETAIL_psv.psv")
+		for postcodes, _ := range lstObjStateLya[states].LstObjPostcodeLya {
+			postcode_path := state_path + lstObjStateLya[states].LstObjPostcodeLya[postcodes].Postcode + "/"
+
+			sliceLength := len(lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya)
+			var wg sync.WaitGroup
+			wg.Add(sliceLength)
+
+			for suburbs, _ := range lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya {
+				go func(states int, postcodes int, suburbs int) {
+					defer wg.Done()
+					suburb_path := postcode_path + lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LOCALITY_PID + "/"
+					_ = suburb_path
+					//fmt.Println(suburb_path)
+					for i := 1; i < len(read_state); i++ {
+					}
+				}(states, postcodes, suburbs)
+
+			}
+
+			wg.Wait()
+
+		}
+		read_state = nil
+		//runtime.GC()
+		//debug.FreeOSMemory()
+	}
+}
+
+func worker(wg *sync.WaitGroup, states int, postcodes int, suburbs int, postcode_path string, read_state []string) {
+	defer wg.Done()
+	suburb_path := postcode_path + lstObjStateLya[states].LstObjPostcodeLya[postcodes].LstObjSuburbLya[suburbs].LOCALITY_PID + "/"
+	fmt.Println(suburb_path)
+	for i := 1; i < len(read_state); i++ {
+	}
 }
 
 func findSuburb(name string, limiter int) []ObjSuburbLya {
@@ -187,6 +410,8 @@ func loadStates() {
 			State_Abbr: strings.TrimSpace(tmp_line[4]),
 		}
 		lstObjStateLya = append(lstObjStateLya, tmp_ObjStateLya)
+		item = nil
+		//runtime.GC()
 	}
 }
 
@@ -234,6 +459,9 @@ func loadPostcodes() {
 			}
 			lstObjStateLya[index].LstObjPostcodeLya = append(lstObjStateLya[index].LstObjPostcodeLya, tmp_ObjPostcodeLya)
 		}
+
+		load_postcodes = nil
+		//runtime.GC()
 	}
 }
 
@@ -258,6 +486,9 @@ func loadSuburbs(state string) []ObjSuburbLya {
 		}
 	}
 	fmt.Println("load suburbs done")
+	tmp_sub_geos = nil
+	tmp_sub_names = nil
+	runtime.GC()
 	return lst_tmp_ObjSuburbLya
 }
 
@@ -428,6 +659,9 @@ func loadStreets() {
 
 		}
 
+		tmp_streets_geo = nil
+		//runtime.GC()
+
 		/*currentTime := time.Now()
 		diff := currentTime.Sub(oldTime)
 		//In hours
@@ -495,6 +729,9 @@ func generateGeoStreets(index int, save string) {
 		}
 	}
 	wg.Wait()
+	tmp_streets = nil
+	tmp_streets_geo = nil
+	//runtime.GC()
 	convertObjStreetToGeoSaving(lst_tmp_streets_noGeo, save)
 }
 
@@ -545,6 +782,8 @@ func loadStreetGeo() {
 
 		//In nanoseconds
 		fmt.Printf("Nanoseconds: %d\n", diff.Nanoseconds())
+		tmp_streets_geo = nil
+		//runtime.GC()
 	}
 }
 
