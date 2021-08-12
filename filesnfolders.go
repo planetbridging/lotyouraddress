@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -102,6 +103,15 @@ func fileExists(filename string) bool {
 	return !info.IsDir()
 }
 
+func folderExists(path string) bool {
+	_, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return false
+	} else {
+		return true
+	}
+}
+
 func createFolder(path string) {
 	_, err := os.Stat(path)
 
@@ -112,4 +122,42 @@ func createFolder(path string) {
 		}
 
 	}
+}
+
+func getFolders(path string) []string {
+	var lst []string
+	files, err := ioutil.ReadDir(path)
+
+	if err != nil {
+
+		log.Fatal(err)
+	}
+
+	for _, f := range files {
+		if f.IsDir() {
+			lst = append(lst, f.Name())
+		}
+
+		//fmt.Println(f.Name())
+	}
+	return lst
+}
+
+func getFiles(path string) []string {
+	var lst []string
+	files, err := ioutil.ReadDir(path)
+
+	if err != nil {
+
+		log.Fatal(err)
+	}
+
+	for _, f := range files {
+		if !f.IsDir() {
+			lst = append(lst, f.Name())
+		}
+
+		//fmt.Println(f.Name())
+	}
+	return lst
 }

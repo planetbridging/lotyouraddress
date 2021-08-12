@@ -36,6 +36,7 @@ func distance(lat1 float64, lng1 float64, lat2 float64, lng2 float64, unit ...st
 }
 
 /*
+/home/lotyouraddress/data/addy/MAY21_GNAF_PipeSeparatedValue/G-NAF/G-NAF MAY 2021/Standard/export/
 func main() {
 	//145.124738|-38.162404 to 143.95144633|-36.3316845
 	fmt.Printf("%f Miles\n", distance(32.9697, -96.80322, 29.46786, -98.53506, "M"))

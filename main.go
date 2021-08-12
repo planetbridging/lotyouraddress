@@ -27,21 +27,37 @@ var root = flag.String("root", ".", "file system path")
 
 func main() {
 	fmt.Println("Welcome to lya")
+
+	lstStaticStates = append(lstStaticStates, "ACT")
+	lstStaticStates = append(lstStaticStates, "NSW")
+	lstStaticStates = append(lstStaticStates, "NT")
+	lstStaticStates = append(lstStaticStates, "OT")
+	lstStaticStates = append(lstStaticStates, "QLD")
+	lstStaticStates = append(lstStaticStates, "SA")
+	lstStaticStates = append(lstStaticStates, "TAS")
+	lstStaticStates = append(lstStaticStates, "VIC")
+	lstStaticStates = append(lstStaticStates, "WA")
+
 	//currentPath = "C:\\Users\\plane\\OneDrive\\Documents\\development\\data\\addy\\MAY21_GNAF_PipeSeparatedValue\\"
 	//currentPath = "/mnt/c/Users/plane/OneDrive/Documents/development/data/addy/MAY21_GNAF_PipeSeparatedValue/"
 	cp := readLocal(".currentPath")
 	currentPath = cp[0]
+	exportPath := currentPath + "G-NAF/G-NAF MAY 2021/Standard/export/"
+	if folderExists(exportPath) {
+		importLyua(exportPath)
+	} else {
 
+		loadStates()
+
+		loadPostcodes()
+
+		loadStreets()
+
+		checkPreprocessedInternet()
+
+		setupLocalStreetAccess()
+	}
 	//fmt.Println(cp[0])
-	loadStates()
-
-	loadPostcodes()
-
-	loadStreets()
-
-	checkPreprocessedInternet()
-
-	setupLocalStreetAccess()
 
 	//internetToStreetTesting()
 	//loadStreetGeo()
@@ -78,7 +94,7 @@ func main() {
 	}*/
 	internet_geo = nil
 
-	exportLya()
+	//exportLya()
 
 	//runtime.GC()
 	fmt.Println("Lotyouraddress running")
@@ -126,6 +142,46 @@ FTTN           bool
 FTTP           bool
 HFC            bool
 Satellite      bool*/
+
+func exportStreets(path string) {
+	fmt.Println("exporting suburbs")
+	for s, _ := range lstObjStateLya {
+		state_folder := path + lstObjStateLya[s].State_Abbr + "/"
+		createFolder(state_folder)
+		for p, _ := range lstObjStateLya[s].LstObjPostcodeLya {
+			postcode_folder := state_folder + lstObjStateLya[s].LstObjPostcodeLya[p].Postcode + "/"
+			createFolder(postcode_folder)
+
+			for u, _ := range lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya {
+				save_path := postcode_folder + lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LOCALITY_PID + "_"
+				save_path += strings.ReplaceAll(lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LOCALITY_PID+".csv", " ", "")
+				if !fileExists(save_path) {
+					var data []string
+					title := "STREET_LOCALITY_PID,STREET_NAME,STREET_TYPE_CODE,LONGITUDE,LATITUDE,"
+					title += "Fixed_wireless,FTTB,FTTDP_FTTC,FTTN,FTTP,HFC,Satellite"
+					data = append(data, title)
+					for r, _ := range lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya {
+						row := lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya[r].STREET_LOCALITY_PID + ","
+						row += lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya[r].STREET_NAME + ","
+						row += lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya[r].STREET_TYPE_CODE + ","
+						row += lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya[r].LONGITUDE + ","
+						row += lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya[r].LATITUDE + ","
+						row += strconv.FormatBool(lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya[r].Selected_Internet.Fixed_wireless) + ","
+						row += strconv.FormatBool(lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya[r].Selected_Internet.FTTB) + ","
+						row += strconv.FormatBool(lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya[r].Selected_Internet.FTTDP_FTTC) + ","
+						row += strconv.FormatBool(lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya[r].Selected_Internet.FTTN) + ","
+						row += strconv.FormatBool(lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya[r].Selected_Internet.FTTP) + ","
+						row += strconv.FormatBool(lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya[r].Selected_Internet.HFC) + ","
+						row += strconv.FormatBool(lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya[r].Selected_Internet.Satellite)
+						data = append(data, row)
+					}
+					saveFile(data, save_path)
+				}
+			}
+
+		}
+	}
+}
 
 func exportSuburbs(path string) {
 	fmt.Println("exporting suburbs")
@@ -389,15 +445,6 @@ func getSuburbDistance(lat1 string, long1 string) []ObjDistance {
 //VIC941|2012-04-27||FRANKSTON SOUTH||G|2|250184905|5
 
 func loadStates() {
-	lstStaticStates = append(lstStaticStates, "ACT")
-	lstStaticStates = append(lstStaticStates, "NSW")
-	lstStaticStates = append(lstStaticStates, "NT")
-	lstStaticStates = append(lstStaticStates, "OT")
-	lstStaticStates = append(lstStaticStates, "QLD")
-	lstStaticStates = append(lstStaticStates, "SA")
-	lstStaticStates = append(lstStaticStates, "TAS")
-	lstStaticStates = append(lstStaticStates, "VIC")
-	lstStaticStates = append(lstStaticStates, "WA")
 
 	//C:\Users\plane\OneDrive\Documents\development\data\addy\MAY21_GNAF_PipeSeparatedValue\G-NAF\G-NAF MAY 2021\Standard
 	for index, _ := range lstStaticStates {
