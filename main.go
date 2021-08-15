@@ -44,7 +44,7 @@ func main() {
 	currentPath = cp[0]
 	exportPath := currentPath + "G-NAF/G-NAF MAY 2021/Standard/export/"
 	if folderExists(exportPath) {
-		importLyua(exportPath)
+		importLya(exportPath)
 	} else {
 
 		loadStates()

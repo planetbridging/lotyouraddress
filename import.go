@@ -7,13 +7,19 @@ import (
 	"sync"
 )
 
-func importLyua(path string) {
+func importLya(path string) {
+	fmt.Println("starting importing states")
 	importStates(path)
 	fmt.Println("finished importing states")
+	fmt.Println("starting importing postcodes")
 	importPostcodes(path)
 	fmt.Println("finished importing postcodes")
+	fmt.Println("starting importing suburbs")
 	importSuburbs(path)
 	fmt.Println("finished importing suburbs")
+	fmt.Println("starting importing addresses")
+	importAddresses()
+	fmt.Println("finished importing addresses")
 }
 
 func importStates(path string) {
@@ -121,4 +127,116 @@ func importSuburbs(path string) {
 
 		}
 	}
+}
+
+func importAddresses() {
+	addressesPath := currentPath + "G-NAF/G-NAF MAY 2021/Standard/"
+	streets := addressesPath + "export/streets/"
+	if !folderExists(streets) {
+		//createFolder(streets)
+		for s, _ := range lstObjStateLya {
+			fmt.Println("importing addresses state ", lstObjStateLya[s].State_Abbr)
+			//state_path := streets + lstObjStateLya[s].State_Abbr + "/"
+			//createFolder(state_path)
+			tmp := readLocal(addressesPath + lstObjStateLya[s].State_Abbr + "_ADDRESS_DETAIL_psv.psv")
+			for i := 1; i < len(tmp); i++ {
+				//cleaned := strings.ReplaceAll(tmp[i], " ", "")
+				row := strings.Split(tmp[i], "|")
+				tmp_ObjAddressesLya := convertStreetRowToObj(row)
+				for p, _ := range lstObjStateLya[s].LstObjPostcodeLya {
+					if row[26] == lstObjStateLya[s].LstObjPostcodeLya[p].Postcode {
+						for u, _ := range lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya {
+							if row[24] == lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LOCALITY_PID {
+								for r, _ := range lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya {
+									if row[22] == lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya[r].STREET_LOCALITY_PID {
+										lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya[r].Addresses = append(lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LstObjStreetsLya[r].Addresses, tmp_ObjAddressesLya)
+										break
+									}
+								}
+								break
+							}
+						}
+						break
+					}
+
+				}
+
+			}
+			fmt.Println("finished importing addresses state ", lstObjStateLya[s].State_Abbr)
+		}
+	}
+}
+
+func convertStreetRowToObj(row []string) ObjAddressesLya {
+	/*tmp_ObjAddressesLya := ObjAddressesLya{
+		ADDRESS_DETAIL_PID: row[0],
+		//DATE_CREATED|DATE_LAST_MODIFIED|DATE_RETIRED|
+		BUILDING_NAME:        row[4],
+		LOT_NUMBER_PREFIX:    row[5],
+		LOT_NUMBER:           row[6],
+		LOT_NUMBER_SUFFIX:    row[7],
+		FLAT_TYPE_CODE:       row[8],
+		FLAT_NUMBER_PREFIX:   row[9],
+		FLAT_NUMBER:          row[10],
+		FLAT_NUMBER_SUFFIX:   row[11],
+		LEVEL_TYPE_CODE:      row[12],
+		LEVEL_NUMBER_PREFIX:  row[13],
+		LEVEL_NUMBER:         row[14],
+		LEVEL_NUMBER_SUFFIX:  row[15],
+		NUMBER_FIRST_PREFIX:  row[16],
+		NUMBER_FIRST:         row[17],
+		NUMBER_FIRST_SUFFIX:  row[18],
+		NUMBER_LAST_PREFIX:   row[19],
+		NUMBER_LAST:          row[20],
+		NUMBER_LAST_SUFFIX:   row[21],
+		STREET_LOCALITY_PID:  row[22],
+		LOCATION_DESCRIPTION: row[23],
+		LOCALITY_PID:         row[24],
+		ALIAS_PRINCIPAL:      row[25],
+		//POSTCODE|
+		PRIVATE_STREET:      row[27],
+		LEGAL_PARCEL_ID:     row[28],
+		CONFIDENCE:          row[29],
+		ADDRESS_SITE_PID:    row[30],
+		LEVEL_GEOCODED_CODE: row[31],
+		PROPERTY_PID:        row[32],
+		GNAF_PROPERTY_PID:   row[33],
+		PRIMARY_SECONDARY:   row[34],
+	}*/
+	tmp_ObjAddressesLya := ObjAddressesLya{
+		ADDRESS_DETAIL_PID: row[0],
+		//DATE_CREATED|DATE_LAST_MODIFIED|DATE_RETIRED|
+		BUILDING_NAME: row[4],
+		//LOT_NUMBER_PREFIX:    row[5],
+		LOT_NUMBER: row[6],
+		//LOT_NUMBER_SUFFIX:    row[7],
+		//FLAT_TYPE_CODE:       row[8],
+		//FLAT_NUMBER_PREFIX:   row[9],
+		FLAT_NUMBER: row[10],
+		//FLAT_NUMBER_SUFFIX:   row[11],
+		LEVEL_TYPE_CODE: row[12],
+		//LEVEL_NUMBER_PREFIX:  row[13],
+		LEVEL_NUMBER: row[14],
+		//LEVEL_NUMBER_SUFFIX:  row[15],
+		//NUMBER_FIRST_PREFIX:  row[16],
+		NUMBER_FIRST: row[17],
+		//NUMBER_FIRST_SUFFIX:  row[18],
+		//NUMBER_LAST_PREFIX:   row[19],
+		NUMBER_LAST: row[20],
+		//NUMBER_LAST_SUFFIX:   row[21],
+		//STREET_LOCALITY_PID:  row[22],
+		//LOCATION_DESCRIPTION: row[23],
+		//LOCALITY_PID:         row[24],
+		//ALIAS_PRINCIPAL:      row[25],
+		//POSTCODE|
+		//PRIVATE_STREET:      row[27],
+		//LEGAL_PARCEL_ID:     row[28],
+		//CONFIDENCE:          row[29],
+		//ADDRESS_SITE_PID:    row[30],
+		//LEVEL_GEOCODED_CODE: row[31],
+		//PROPERTY_PID:        row[32],
+		//GNAF_PROPERTY_PID:   row[33],
+		//PRIMARY_SECONDARY:   row[34],
+	}
+	return tmp_ObjAddressesLya
 }

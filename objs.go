@@ -40,6 +40,42 @@ type ObjInternetType struct {
 	Satellite      bool
 }
 
+type ObjAddressesLya struct {
+	ADDRESS_DETAIL_PID string //0
+	//DATE_CREATED|DATE_LAST_MODIFIED|DATE_RETIRED|
+	BUILDING_NAME        string //4
+	LOT_NUMBER_PREFIX    string //5
+	LOT_NUMBER           string //6
+	LOT_NUMBER_SUFFIX    string //7
+	FLAT_TYPE_CODE       string //8
+	FLAT_NUMBER_PREFIX   string //9
+	FLAT_NUMBER          string //10
+	FLAT_NUMBER_SUFFIX   string //11
+	LEVEL_TYPE_CODE      string //12
+	LEVEL_NUMBER_PREFIX  string //13
+	LEVEL_NUMBER         string //14
+	LEVEL_NUMBER_SUFFIX  string //15
+	NUMBER_FIRST_PREFIX  string //16
+	NUMBER_FIRST         string //17
+	NUMBER_FIRST_SUFFIX  string //18
+	NUMBER_LAST_PREFIX   string //19
+	NUMBER_LAST          string //20
+	NUMBER_LAST_SUFFIX   string //21
+	STREET_LOCALITY_PID  string //22
+	LOCATION_DESCRIPTION string //23
+	LOCALITY_PID         string //24
+	ALIAS_PRINCIPAL      string //25
+	//POSTCODE|
+	PRIVATE_STREET      string //27
+	LEGAL_PARCEL_ID     string //28
+	CONFIDENCE          string //29
+	ADDRESS_SITE_PID    string //30
+	LEVEL_GEOCODED_CODE string //31
+	PROPERTY_PID        string //32
+	GNAF_PROPERTY_PID   string //33
+	PRIMARY_SECONDARY   string //34
+}
+
 type ObjStreetsLya struct {
 	STREET_NAME         string
 	STREET_TYPE_CODE    string
@@ -50,6 +86,7 @@ type ObjStreetsLya struct {
 	internetType        int
 	local_pid           string
 	Selected_Internet   ObjApiInternetType
+	Addresses           []ObjAddressesLya
 }
 
 type ObjSuburbLya struct {
