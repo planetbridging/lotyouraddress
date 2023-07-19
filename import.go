@@ -18,12 +18,14 @@ func importLya(path string) {
 	importSuburbs(path)
 	fmt.Println("finished importing suburbs")
 	fmt.Println("starting importing addresses")
-	importAddresses()
+	//"G-NAF/G-NAF MAY 2021/Standard/"
+	//importAddresses(path)
 	fmt.Println("finished importing addresses")
 }
 
 func importStates(path string) {
-	tmp := readLocal(path + "STATES.csv")
+	fmt.Println(path + "G-NAF/G-NAF_MAY_2021/Standard/export/STATES.csv")
+	tmp := readLocal(path + "G-NAF/G-NAF_MAY_2021/Standard/export/STATES.csv")
 	for i := 1; i < len(tmp); i++ {
 		//cleaned := strings.ReplaceAll(tmp[i], " ", "")
 		row := strings.Split(tmp[i], ",")
@@ -39,7 +41,7 @@ func importStates(path string) {
 func importPostcodes(path string) {
 
 	for s, _ := range lstStaticStates {
-		tmp_path := path + "postcodes/" + lstStaticStates[s] + "/"
+		tmp_path := path + "G-NAF/G-NAF_MAY_2021/Standard/export/postcodes/" + lstStaticStates[s] + "/"
 		tmp := getFiles(tmp_path)
 		for o, _ := range lstObjStateLya {
 			if lstStaticStates[s] == lstObjStateLya[o].State_Abbr {
@@ -76,7 +78,7 @@ func importPostcodes(path string) {
 
 func importSuburbs(path string) {
 	for s, _ := range lstObjStateLya {
-		state_folder := path + "suburbs/" + lstObjStateLya[s].State_Abbr + "/"
+		state_folder := path + "G-NAF/G-NAF_MAY_2021/Standard/export/suburbs/" + lstObjStateLya[s].State_Abbr + "/"
 		createFolder(state_folder)
 		for p, _ := range lstObjStateLya[s].LstObjPostcodeLya {
 			postcode_folder := state_folder + lstObjStateLya[s].LstObjPostcodeLya[p].Postcode + "/"
@@ -89,6 +91,7 @@ func importSuburbs(path string) {
 					defer wg.Done()
 					id := lstObjStateLya[s].LstObjPostcodeLya[p].LstObjSuburbLya[u].LOCALITY_PID
 					suburb_file := postcode_folder + id + "_" + id + ".csv"
+					//fmt.Println(suburb_file)
 					tmp := readLocal(suburb_file)
 					for i := 1; i < len(tmp); i++ {
 						row := strings.Split(tmp[i], ",")
@@ -129,9 +132,10 @@ func importSuburbs(path string) {
 	}
 }
 
-func importAddresses() {
-	addressesPath := currentPath + "G-NAF/G-NAF MAY 2021/Standard/"
-	streets := addressesPath + "export/streets/"
+func importAddresses(path string) {
+	//addressesPath := "G-NAF/G-NAF MAY 2021/Standard/"
+	addressesPath := path + "G-NAF/G-NAF_MAY_2021/Standard/"
+	streets := path + "G-NAF/G-NAF_MAY_2021/Standard/export/streets/"
 	if !folderExists(streets) {
 		//createFolder(streets)
 		for s, _ := range lstObjStateLya {
@@ -139,6 +143,7 @@ func importAddresses() {
 			//state_path := streets + lstObjStateLya[s].State_Abbr + "/"
 			//createFolder(state_path)
 			tmp := readLocal(addressesPath + lstObjStateLya[s].State_Abbr + "_ADDRESS_DETAIL_psv.psv")
+
 			for i := 1; i < len(tmp); i++ {
 				//cleaned := strings.ReplaceAll(tmp[i], " ", "")
 				row := strings.Split(tmp[i], "|")

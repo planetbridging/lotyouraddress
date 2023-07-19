@@ -41,12 +41,14 @@ func main() {
 	//currentPath = "C:\\Users\\plane\\OneDrive\\Documents\\development\\data\\addy\\MAY21_GNAF_PipeSeparatedValue\\"
 	//currentPath = "/mnt/c/Users/plane/OneDrive/Documents/development/data/addy/MAY21_GNAF_PipeSeparatedValue/"
 	cp := readLocal(".currentPath")
-	currentPath = cp[0]
-	exportPath := currentPath + "G-NAF/G-NAF MAY 2021/Standard/export/"
-	if folderExists(exportPath) {
+
+	//exportPath := os.Getenv("PATH")
+	fmt.Println("loading from" + cp[0])
+	importLya(cp[0])
+	/*if folderExists(exportPath) {
 		importLya(exportPath)
 	} else {
-
+		fmt.Println("processing and exporting?")
 		loadStates()
 
 		loadPostcodes()
@@ -56,7 +58,7 @@ func main() {
 		checkPreprocessedInternet()
 
 		setupLocalStreetAccess()
-	}
+	}*/
 	//fmt.Println(cp[0])
 
 	//internetToStreetTesting()
@@ -100,7 +102,7 @@ func main() {
 	fmt.Println("Lotyouraddress running")
 	http.HandleFunc("/", handlerFunc)
 	http.Handle("/web/", http.FileServer(http.Dir(*root)))
-	http.ListenAndServe(":3000", nil)
+	http.ListenAndServe(":3001", nil)
 }
 
 func exportLya() {
@@ -1333,7 +1335,7 @@ func changingInternetType(it int, occured map[string]bool) {
 	}
 }
 
-//C:\Users\plane\OneDrive\Documents\development\data\internetnrenting\cleaned
+// C:\Users\plane\OneDrive\Documents\development\data\internetnrenting\cleaned
 func cleanInternetDups() {
 	cp := readLocal(".currentInternetPath")
 	currentInternetPath = cp[0]
